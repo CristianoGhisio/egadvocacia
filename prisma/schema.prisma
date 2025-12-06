@@ -1,0 +1,469 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE SCHEMA - Authentication & Tenancy
+// ============================================
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  cnpj      String?  @unique
+  email     String?
+  phone     String?
+  settings  String   @default("{}") // JSON
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users            User[]
+  roles            Role[]
+  clients          Client[]
+  contacts         Contact[]
+  interactions     Interaction[]
+  matters          Matter[]
+  tasks            Task[]
+  deadlines        Deadline[]
+  hearings         Hearing[]
+  activities       Activity[]
+  documents        Document[]
+  documentVersions DocumentVersion[]
+  templates        Template[]
+  timeEntries      TimeEntry[]
+  invoices         Invoice[]
+  invoiceItems     InvoiceItem[]
+  payments         Payment[]
+  auditLogs        AuditLog[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String
+  fullName  String
+  email     String   @unique
+  password  String // hashed
+  role      String // admin, partner, lawyer, intern, financial, support, client
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant                   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsibleForClients    Client[]       @relation("ResponsibleLawyer")
+  responsibleForMatters    Matter[]       @relation("ResponsibleLawyer")
+  assignedTasks            Task[]         @relation("AssignedTo")
+  interactions             Interaction[]
+  activities               Activity[]
+  uploadedDocuments        Document[]     @relation("UploadedBy")
+  uploadedVersions         DocumentVersion[] @relation("UploadedBy")
+  createdTemplates         Template[]     @relation("CreatedBy")
+  timeEntries              TimeEntry[]
+  auditLogs                AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  permissions String   @default("{}") // JSON
+  createdAt   DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  oldData    String? // JSON
+  newData    String? // JSON
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+// ============================================
+// CRM SCHEMA
+// ============================================
+
+model Client {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  type                 String // pf, pj
+  name                 String
+  cpfCnpj              String?
+  email                String?
+  phone                String?
+  street               String?
+  number               String?
+  complement           String?
+  neighborhood         String?
+  city                 String?
+  state                String?
+  zipCode              String?
+  responsibleLawyerId  String?
+  status               String   @default("active") // lead, active, inactive, archived
+  leadStage            String?  @default("new") // new, qualified, proposal, negotiation, won, lost
+  tags                 String? // JSON array
+  metadata             String   @default("{}") // JSON
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsibleLawyer User?         @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id], onDelete: SetNull)
+  contacts          Contact[]
+  interactions      Interaction[]
+  matters           Matter[]
+  timeEntries       TimeEntry[]
+  invoices          Invoice[]
+  documents         Document[]
+
+  @@unique([tenantId, cpfCnpj])
+  @@map("clients")
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  tenantId  String
+  clientId  String
+  name      String
+  role      String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("contacts")
+}
+
+model Interaction {
+  id          String   @id @default(uuid())
+  tenantId    String
+  clientId    String
+  userId      String?
+  type        String // call, email, meeting, note
+  subject     String?
+  description String?
+  metadata    String   @default("{}") // JSON
+  createdAt   DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("interactions")
+}
+
+// ============================================
+// CASES SCHEMA
+// ============================================
+
+model Matter {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  clientId             String
+  processNumber        String?
+  title                String
+  description          String?
+  court                String?
+  district             String?
+  department           String?
+  instance             String?
+  practiceArea         String
+  responsibleLawyerId  String?
+  status               String   @default("open") // open, pending, closed, archived
+  riskScore            Int?
+  tags                 String? // JSON array
+  metadata             String   @default("{}") // JSON
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client            Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  responsibleLawyer User?      @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id], onDelete: SetNull)
+  tasks             Task[]
+  deadlines         Deadline[]
+  hearings          Hearing[]
+  activities        Activity[]
+  documents         Document[]
+  timeEntries       TimeEntry[]
+  invoices          Invoice[]
+
+  @@map("matters")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  tenantId    String
+  matterId    String?
+  assignedToId String?
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String    @default("medium") // low, medium, high, urgent
+  status      String    @default("pending") // pending, in_progress, completed, cancelled
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matter     Matter? @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  assignedTo User?   @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
+
+model Deadline {
+  id              String    @id @default(uuid())
+  tenantId        String
+  matterId        String
+  title           String
+  description     String?
+  deadlineDate    DateTime
+  alertDaysBefore Int       @default(3)
+  isCompleted     Boolean   @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  @@map("deadlines")
+}
+
+model Hearing {
+  id          String   @id @default(uuid())
+  tenantId    String
+  matterId    String
+  hearingDate DateTime
+  type        String?
+  location    String?
+  attendees   String? // JSON array
+  notes       String?
+  status      String   @default("scheduled") // scheduled, completed, cancelled
+  createdAt   DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  @@map("hearings")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  tenantId    String
+  matterId    String
+  userId      String?
+  action      String
+  description String?
+  metadata    String   @default("{}") // JSON
+  createdAt   DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("activities")
+}
+
+// ============================================
+// DOCUMENTS SCHEMA
+// ============================================
+
+model Document {
+  id           String   @id @default(uuid())
+  tenantId     String
+  matterId     String?
+  clientId     String?
+  name         String
+  description  String?
+  type         String?
+  storagePath  String
+  fileSize     Int?
+  mimeType     String?
+  version      Int      @default(1)
+  isTemplate   Boolean  @default(false)
+  tags         String? // JSON array
+  uploadedById String?
+  metadata     String   @default("{}") // JSON
+  createdAt    DateTime @default(now())
+
+  // Relations
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matter     Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  client     Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  uploadedBy User?             @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  versions   DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  documentId         String
+  version            Int
+  storagePath        String
+  fileSize           Int?
+  uploadedById       String?
+  changesDescription String?
+  createdAt          DateTime @default(now())
+
+  // Relations
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@map("document_versions")
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  category    String?
+  content     String
+  variables   String   @default("[]") // JSON array
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("templates")
+}
+
+// ============================================
+// BILLING SCHEMA
+// ============================================
+
+model TimeEntry {
+  id         String    @id @default(uuid())
+  tenantId   String
+  userId     String
+  matterId   String?
+  clientId   String?
+  description String
+  hours      Float
+  hourlyRate Float?
+  billable   Boolean   @default(true)
+  billed     Boolean   @default(false)
+  invoiceId  String?
+  date       DateTime
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  matter  Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@map("time_entries")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  tenantId      String
+  clientId      String
+  invoiceNumber String
+  matterId      String?
+  issueDate     DateTime
+  dueDate       DateTime
+  subtotal      Float
+  taxAmount     Float    @default(0)
+  totalAmount   Float
+  status        String   @default("pending") // draft, pending, paid, overdue, cancelled
+  paymentMethod String?
+  paidAt        DateTime?
+  notes         String?
+  metadata      String   @default("{}") // JSON
+  createdAt     DateTime @default(now())
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  matter       Matter?       @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  items        InvoiceItem[]
+  payments     Payment[]
+  timeEntries  TimeEntry[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  invoiceId   String
+  description String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime @default(now())
+
+  // Relations
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  tenantId      String
+  invoiceId     String
+  amount        Float
+  paymentMethod String
+  paymentDate   DateTime
+  transactionId String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@map("payments")
+}
