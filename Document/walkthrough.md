@@ -53,6 +53,11 @@ Dentro do detalhe do processo:
 *   **Prazos:** Adicione datas limites para contestação, recursos, etc. Marque como concluído com um clique.
 *   **Audiências:** Agende audiências informando data, local (ou link) e tipo.
 
+### 4. Gestão de Documentos (GED)
+*   **Abas de Documentos:** Arraste e solte arquivos PDF, Word ou imagens.
+*   **Armazenamento:** Os arquivos são salvos localmente na pasta `public/uploads`.
+*   **Ações:** Baixe ou visualize clicando no nome.
+
 ## Como Testar
 1.  Acesse **CRM / Pipeline** no menu lateral.
 2.  Clique em **Novo Lead** e cadastre alguém.

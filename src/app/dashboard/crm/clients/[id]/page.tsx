@@ -16,6 +16,8 @@ import {
 import { ClientForm } from '@/components/crm/client-form'
 import { ContactForm } from '@/components/crm/contact-form'
 import { InteractionForm } from '@/components/crm/interaction-form'
+import { DocumentUpload } from '@/components/documents/document-upload'
+import { DocumentList } from '@/components/documents/document-list'
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Loader2, FileText, Users, MessageSquare, Briefcase } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDocument, formatPhone, formatAddress } from '@/lib/utils'
@@ -322,7 +324,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                             <CardTitle>Documentos</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-muted-foreground">Em desenvolvimento...</p>
+                            <DocumentUpload
+                                clientId={client.id}
+                            />
+                            <div className="mt-8">
+                                <DocumentList
+                                    clientId={client.id}
+                                />
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

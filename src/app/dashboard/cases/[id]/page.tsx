@@ -15,6 +15,8 @@ import { ptBR } from 'date-fns/locale'
 import { CaseForm } from '@/components/cases/case-form'
 import { DeadlineList } from '@/components/cases/deadline-list'
 import { HearingList } from '@/components/cases/hearing-list'
+import { DocumentList } from '@/components/documents/document-list'
+import { DocumentUpload } from '@/components/documents/document-upload'
 import { Client } from '@/lib/types/database'
 
 interface Matter {
@@ -265,7 +267,8 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         <TabsContent value="documents">
                             <Card>
                                 <CardContent className="pt-6">
-                                    <p className="text-muted-foreground text-center py-8">Gestão documental em breve...</p>
+                                    <DocumentUpload matterId={matter.id} />
+                                    <DocumentList matterId={matter.id} />
                                 </CardContent>
                             </Card>
                         </TabsContent>
