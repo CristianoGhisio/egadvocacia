@@ -44,6 +44,7 @@ model Tenant {
   invoiceItems     InvoiceItem[]
   payments         Payment[]
   auditLogs        AuditLog[]
+  transactions     Transaction[]
 
   @@map("tenants")
 }
@@ -428,6 +429,7 @@ model Invoice {
   items        InvoiceItem[]
   payments     Payment[]
   timeEntries  TimeEntry[]
+  transactions Transaction[]
 
   @@unique([tenantId, invoiceNumber])
   @@map("invoices")
@@ -466,4 +468,25 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@map("payments")
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  tenantId      String
+  type          String   // "revenue" | "expense"
+  category      String   // e.g. "Honorários", "Aluguel", "Material de Escritório"
+  description   String
+  amount        Float
+  date          DateTime
+  status        String   @default("paid") // "paid", "pending"
+  
+  // Optional links
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
 }

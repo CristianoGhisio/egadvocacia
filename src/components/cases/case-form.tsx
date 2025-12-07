@@ -33,7 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 
 const caseFormSchema = z.object({
-    clientId: z.string({ required_error: 'Selecione um cliente' }).min(1, 'Selecione um cliente'),
+    clientId: z.string().min(1, 'Selecione um cliente'),
     title: z.string().min(3, 'Título deve ter no mínimo 3 caracteres'),
     processNumber: z.string().optional(),
     description: z.string().optional(),
@@ -65,7 +65,7 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
         setValue,
         watch,
         formState: { errors },
-    } = useForm<CaseFormData>({
+    } = useForm({
         resolver: zodResolver(caseFormSchema),
         defaultValues: initialData || {
             status: 'open',
@@ -182,8 +182,8 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
                             </Command>
                         </PopoverContent>
                     </Popover>
-                    {errors.clientId && (
-                        <p className="text-sm text-red-600">{errors.clientId.message}</p>
+                    {errors.clientId?.message && (
+                        <p className="text-sm text-red-600">{String(errors.clientId?.message)}</p>
                     )}
                 </div>
 
@@ -197,8 +197,8 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
                             placeholder="Ex: Ação de Cobrança vs Empresa X"
                             disabled={isLoading}
                         />
-                        {errors.title && (
-                            <p className="text-sm text-red-600">{errors.title.message}</p>
+                        {errors.title?.message && (
+                            <p className="text-sm text-red-600">{String(errors.title?.message)}</p>
                         )}
                     </div>
                     <div className="space-y-2">
@@ -230,8 +230,8 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
                                 ))}
                             </SelectContent>
                         </Select>
-                        {errors.practiceArea && (
-                            <p className="text-sm text-red-600">{errors.practiceArea.message}</p>
+                        {errors.practiceArea?.message && (
+                            <p className="text-sm text-red-600">{String(errors.practiceArea?.message)}</p>
                         )}
                     </div>
 

@@ -15,6 +15,7 @@ import {
     Settings,
     LogOut,
     Target,
+    Banknote,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -27,8 +28,9 @@ const navigation = [
     { name: 'Calendário', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Prazos', href: '/dashboard/deadlines', icon: Clock },
     { name: 'Time Tracking', href: '/dashboard/time-tracking', icon: Clock },
-    { name: 'Faturamento', href: '/dashboard/billing/invoices', icon: DollarSign },
-    { name: 'Configurações', href: '/dashboard/settings/users', icon: Settings },
+    { name: 'Faturamento', href: '/dashboard/billing', icon: DollarSign },
+    { name: 'Financeiro', href: '/dashboard/finance', icon: Banknote },
+    { name: 'Configurações', href: '/dashboard/settings', icon: Settings },
 ]
 
 export function Sidebar() {

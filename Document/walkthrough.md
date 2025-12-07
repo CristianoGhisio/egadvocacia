@@ -58,6 +58,26 @@ Dentro do detalhe do processo:
 *   **Armazenamento:** Os arquivos são salvos localmente na pasta `public/uploads`.
 *   **Ações:** Baixe ou visualize clicando no nome.
 
+## Calendário e Prazos (NOVO)
+
+Agora você tem uma visão centralizada de todos os compromissos do escritório.
+
+### 1. Visão Geral Mensal
+**Caminho:** `/dashboard/calendar` (ou clique em "Calendário" no menu lateral)
+
+O calendário exibe **Prazos** (Cores quentes: Laranja/Vermelho) e **Audiências** (Cores frias: Azul/Roxo) de forma unificada.
+*   **Navegação:** Use as setas para trocar de mês.
+*   **Detalhes:** Clique em qualquer evento para ir direto para o Processo (Case) relacionado.
+
+### 2. Prazos
+Os prazos cadastrados dentro dos processos aparecem automaticamente aqui.
+*   Prazos vencidos ou próximos do vencimento seguem a mesma lógica visual.
+*   Ao concluir um prazo no processo, ele aparecerá com visual "concluído" (esmaecido) no calendário.
+
+### 3. Audiências
+As audiências agendadas também são sincronizadas.
+*   Exibe horário e local (se houver).
+
 ## Como Testar
 1.  Acesse **CRM / Pipeline** no menu lateral.
 2.  Clique em **Novo Lead** e cadastre alguém.
