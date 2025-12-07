@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { ClientForm } from '@/components/crm/client-form'
 import { formatDocument } from '@/lib/utils'
-import { Plus, Search, Eye, Loader2 } from 'lucide-react'
+import { Plus, Search, Eye, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Client {
@@ -83,7 +83,7 @@ export default function ClientsPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [typeFilter, setTypeFilter] = useState<string>('all')
 
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setIsLoading(true)
         try {
             const params = new URLSearchParams()
@@ -112,11 +112,11 @@ export default function ClientsPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [statusFilter, typeFilter, searchTerm])
 
     useEffect(() => {
         fetchClients()
-    }, [statusFilter, typeFilter])
+    }, [fetchClients])
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
@@ -233,11 +233,41 @@ export default function ClientsPage() {
                                         {client.responsibleLawyer?.fullName || '-'}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Link href={`/dashboard/crm/clients/${client.id}`}>
-                                            <Button variant="ghost" size="sm" title={`Ver detalhes de ${client.name}`}>
-                                                <Eye className="h-4 w-4" />
+                                        <div className="flex justify-end gap-2">
+                                            <Link href={`/dashboard/crm/clients/${client.id}`}>
+                                                <Button variant="ghost" size="sm" title={`Ver detalhes de ${client.name}`}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                title="Excluir cliente"
+                                                onClick={() => {
+                                                    const dlg = document.getElementById('client-delete-'+client.id) as HTMLDialogElement | null
+                                                    dlg?.showModal?.()
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-red-500" />
                                             </Button>
-                                        </Link>
+                                        </div>
+                                        <dialog id={`client-delete-${client.id}`} className="rounded-md p-6">
+                                            <div className="space-y-3">
+                                                <div className="text-lg font-semibold">Excluir Cliente</div>
+                                                <div className="text-sm text-muted-foreground">Esta ação não poderá ser desfeita.</div>
+                                                <div className="flex justify-end gap-2 mt-4">
+                                                    <button className="px-3 py-2 border rounded" onClick={(e) => (e.currentTarget.closest('dialog') as HTMLDialogElement).close()}>Cancelar</button>
+                                                    <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={async (e) => {
+                                                        try {
+                                                            const res = await fetch(`/api/crm/clients/${client.id}`, { method: 'DELETE' })
+                                                            if (!res.ok) return
+                                                            (e.currentTarget.closest('dialog') as HTMLDialogElement).close()
+                                                            fetchClients()
+                                                        } catch {}
+                                                    }}>Excluir</button>
+                                                </div>
+                                            </div>
+                                        </dialog>
                                     </TableCell>
                                 </TableRow>
                             ))}

@@ -74,7 +74,8 @@ export function DeadlineList() {
         }
     }
 
-    const columns = getColumns({ onToggleComplete: handleToggleComplete })
+    const [deleteId, setDeleteId] = useState<string | null>(null)
+    const columns = getColumns({ onToggleComplete: handleToggleComplete, onDelete: (id) => setDeleteId(id) })
 
     const table = useReactTable({
         data,
@@ -188,6 +189,34 @@ export function DeadlineList() {
                     Próxima
                 </Button>
             </div>
+            {deleteId && (
+                <>
+                    <div className="fixed inset-0 z-40 bg-black/50" />
+                    <dialog
+                        open
+                        className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-md p-6 shadow-xl"
+                    >
+                        <div className="space-y-3">
+                            <div className="text-lg font-semibold">Excluir Prazo</div>
+                            <div className="text-sm text-muted-foreground">Esta ação é definitiva e não poderá ser desfeita.</div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button className="px-3 py-2 border rounded" onClick={() => setDeleteId(null)}>Cancelar</button>
+                                <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={async () => {
+                                    try {
+                                        const res = await fetch(`/api/crm/deadlines/${deleteId}`, { method: 'DELETE' })
+                                        if (!res.ok) throw new Error()
+                                        setDeleteId(null)
+                                        fetchData()
+                                        toast.success('Prazo removido')
+                                    } catch {
+                                        toast.error('Erro ao remover')
+                                    }
+                                }}>Excluir</button>
+                            </div>
+                        </div>
+                    </dialog>
+                </>
+            )}
         </div>
     )
 }

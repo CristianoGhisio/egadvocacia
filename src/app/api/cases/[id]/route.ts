@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { can, canAsync } from '@/lib/rbac'
 
 const updateCaseSchema = z.object({
     clientId: z.string().uuid().optional(),
@@ -34,6 +35,10 @@ export async function GET(
                 { status: 401 }
             )
         }
+
+        const tenantId = session.user.tenantId
+        const allowed = can(session.user, 'cases.view') || await canAsync(session.user, tenantId, 'cases.view')
+        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
         // Unwrap params Promise (Next.js 16)
         const { id } = await params
@@ -112,6 +117,10 @@ export async function PATCH(
             )
         }
 
+        const tenantId = session.user.tenantId
+        const allowed = can(session.user, 'cases.manage') || await canAsync(session.user, tenantId, 'cases.manage')
+        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
         const { id } = await params
         const body = await request.json()
         const validatedData = updateCaseSchema.parse(body)
@@ -161,6 +170,18 @@ export async function PATCH(
             }
         })
 
+        await prisma.auditLog.create({
+            data: {
+                tenantId,
+                userId: session.user.id,
+                action: 'update',
+                entityType: 'matter',
+                entityId: id,
+                oldData: null,
+                newData: JSON.stringify(validatedData),
+            }
+        })
+
         return NextResponse.json(updatedMatter)
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -193,6 +214,10 @@ export async function DELETE(
             )
         }
 
+        const tenantId = session.user.tenantId
+        const allowed = can(session.user, 'cases.manage') || await canAsync(session.user, tenantId, 'cases.manage')
+        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
         const { id } = await params
 
         // Check ownership
@@ -217,6 +242,17 @@ export async function DELETE(
             data: {
                 status: 'archived',
                 updatedAt: new Date(),
+            }
+        })
+        await prisma.auditLog.create({
+            data: {
+                tenantId,
+                userId: session.user.id,
+                action: 'archive',
+                entityType: 'matter',
+                entityId: id,
+                oldData: null,
+                newData: JSON.stringify({ status: 'archived' }),
             }
         })
 

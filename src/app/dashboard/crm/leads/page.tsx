@@ -27,7 +27,7 @@ export default function LeadsPage() {
         <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Pipeline de Vendas</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Pipeline de Contatos</h1>
                     <p className="text-muted-foreground">
                         Gerencie seus leads e oportunidades de negócio
                     </p>

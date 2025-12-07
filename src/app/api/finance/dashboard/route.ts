@@ -3,15 +3,18 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { startOfMonth, endOfMonth } from 'date-fns'
+import { canAsync, can } from '@/lib/rbac'
 
 export async function GET(request: Request) {
-    try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
-            return new NextResponse('Unauthorized', { status: 401 })
-        }
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id || !session?.user?.tenantId) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
 
-        const tenantId = session.user.tenantId
+    const tenantId = session.user.tenantId
+    const allowed = can(session.user, 'finance.view') || await canAsync(session.user, tenantId, 'finance.view')
+    if (!allowed) return new NextResponse('Forbidden', { status: 403 })
         const now = new Date()
         const firstDay = startOfMonth(now)
         const lastDay = endOfMonth(now)

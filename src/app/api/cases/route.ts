@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 // Validation schema
 const caseSchema = z.object({
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
         const clientId = searchParams.get('clientId')
         const lawyerId = searchParams.get('lawyerId')
 
-        const where: any = {
+        const where: Prisma.MatterWhereInput = {
             tenantId: session.user.tenantId,
         }
 

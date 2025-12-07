@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -19,7 +19,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Scale, FileText } from 'lucide-react'
+import { Plus, Search, Scale, FileText, Eye, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -42,7 +42,7 @@ export default function CasesPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
-    const fetchCases = async () => {
+    const fetchCases = useCallback(async () => {
         setIsLoading(true)
         try {
             const params = new URLSearchParams()
@@ -58,14 +58,14 @@ export default function CasesPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [searchTerm])
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchCases()
         }, 300)
         return () => clearTimeout(timer)
-    }, [searchTerm])
+    }, [fetchCases])
 
     const handleCreateSuccess = () => {
         setIsCreateOpen(false)
@@ -127,7 +127,7 @@ export default function CasesPage() {
                             <TableHead>Área</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Última Atualização</TableHead>
-                            <TableHead className="w-[100px]"></TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -169,12 +169,37 @@ export default function CasesPage() {
                                             locale: ptBR,
                                         })}
                                     </TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="sm" asChild>
-                                            <Link href={`/dashboard/cases/${matter.id}`}>
-                                                Abrir
-                                            </Link>
-                                        </Button>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="sm" asChild>
+                                                <Link href={`/dashboard/cases/${matter.id}`} title="Ver">
+                                                    <Eye className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button variant="ghost" size="sm" title="Excluir" onClick={() => {
+                                                const dlg = document.getElementById('case-delete-'+matter.id) as HTMLDialogElement | null
+                                                dlg?.showModal?.()
+                                            }}>
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                            <dialog id={`case-delete-${matter.id}`} className="rounded-md p-6">
+                                                <div className="space-y-3">
+                                                    <div className="text-lg font-semibold">Excluir Processo</div>
+                                                    <div className="text-sm text-muted-foreground">Esta ação é definitiva e não poderá ser desfeita.</div>
+                                                    <div className="flex justify-end gap-2 mt-4">
+                                                        <button className="px-3 py-2 border rounded" onClick={(e) => (e.currentTarget.closest('dialog') as HTMLDialogElement).close()}>Cancelar</button>
+                                                        <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={async (e) => {
+                                                            try {
+                                                                const res = await fetch(`/api/cases/${matter.id}`, { method: 'DELETE' })
+                                                                if (!res.ok) return
+                                                                (e.currentTarget.closest('dialog') as HTMLDialogElement).close()
+                                                                fetchCases()
+                                                            } catch {}
+                                                        }}>Excluir</button>
+                                                    </div>
+                                                </div>
+                                            </dialog>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

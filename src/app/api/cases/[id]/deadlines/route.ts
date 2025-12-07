@@ -51,12 +51,25 @@ export async function POST(
         const body = await request.json()
         const validatedData = deadlineSchema.parse(body)
 
-        const deadline = await prisma.deadline.create({
-            data: {
-                ...validatedData,
-                matterId,
-                tenantId: session.user.tenantId,
-            },
+        const deadline = await prisma.$transaction(async (tx) => {
+            const d = await tx.deadline.create({
+                data: {
+                    ...validatedData,
+                    matterId,
+                    tenantId: session.user.tenantId,
+                },
+            })
+            await tx.activity.create({
+                data: {
+                    tenantId: session.user.tenantId,
+                    matterId,
+                    userId: session.user.id,
+                    action: 'deadline_created',
+                    description: `Prazo criado: ${d.title}`,
+                    metadata: JSON.stringify({ deadlineId: d.id, deadlineDate: d.deadlineDate })
+                }
+            })
+            return d
         })
 
         return NextResponse.json(deadline, { status: 201 })

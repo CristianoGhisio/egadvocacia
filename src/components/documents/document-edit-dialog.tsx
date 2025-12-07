@@ -28,10 +28,16 @@ import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
+type EditableDocument = {
+    id: string
+    client?: { id: string; name?: string; cpfCnpj?: string }
+    matter?: { id: string; title?: string; client?: { id: string; name?: string } }
+}
+
 interface DocumentEditDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    document: any
+    document: EditableDocument
     onSuccess: () => void
 }
 
@@ -79,25 +85,28 @@ export function DocumentEditDialog({ open, onOpenChange, document, onSuccess }: 
                     ])
 
                     if (resClients.ok) {
-                        const data = await resClients.json()
-                        setClients(data.map((c: any) => ({
-                            id: c.id,
-                            label: c.cpfCnpj
-                                ? `${c.name} - ${c.cpfCnpj}`
-                                : c.name
-                        })))
+                        const data = (await resClients.json()) as Array<{ id: string; name: string; cpfCnpj?: string }>
+                        setClients(
+                            data.map((c) => ({
+                                id: c.id,
+                                label: c.cpfCnpj ? `${c.name} - ${c.cpfCnpj}` : c.name,
+                            }))
+                        )
                     }
 
                     if (resCases.ok) {
-                        const data = await resCases.json()
-                        // Store clientId in the option for filtering
-                        setMatters(data.map((m: any) => ({
-                            id: m.id,
-                            label: m.client?.name
-                                ? `${m.title} - ${m.client.name}`
-                                : m.title,
-                            clientId: m.client?.id
-                        })))
+                        const data = (await resCases.json()) as Array<{
+                            id: string
+                            title: string
+                            client?: { id: string; name?: string }
+                        }>
+                        setMatters(
+                            data.map((m) => ({
+                                id: m.id,
+                                label: m.client?.name ? `${m.title} - ${m.client.name}` : m.title,
+                                clientId: m.client?.id || '',
+                            }))
+                        )
                     }
                 } catch (error) {
                     console.error('Error fetching data', error)

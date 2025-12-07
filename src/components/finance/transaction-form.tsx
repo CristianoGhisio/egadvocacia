@@ -49,8 +49,8 @@ interface TransactionFormProps {
 export function TransactionForm({ open, onOpenChange, onSuccess }: TransactionFormProps) {
     const [isLoading, setIsLoading] = useState(false)
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema) as any,
+    const form = useForm<z.input<typeof formSchema>, unknown, z.output<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
         defaultValues: {
             type: 'expense',
             category: '',
@@ -60,11 +60,12 @@ export function TransactionForm({ open, onOpenChange, onSuccess }: TransactionFo
         },
     })
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: z.output<typeof formSchema>) {
         setIsLoading(true)
         try {
             const res = await fetch('/api/finance/transactions', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values),
             })
 
@@ -150,7 +151,12 @@ export function TransactionForm({ open, onOpenChange, onSuccess }: TransactionFo
                                     <FormItem>
                                         <FormLabel>Valor (R$)</FormLabel>
                                         <FormControl>
-                                            <Input type="number" step="0.01" {...field} />
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                value={typeof field.value === 'number' ? field.value : Number(field.value ?? 0)}
+                                                onChange={(e) => field.onChange(e.target.value)}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

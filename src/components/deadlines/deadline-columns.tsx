@@ -3,7 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Circle, ArrowRight } from 'lucide-react'
+import { CheckCircle2, Circle, ArrowRight, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import Link from 'next/link'
@@ -25,9 +25,10 @@ export type DeadlineData = {
 
 interface ColumnsProps {
     onToggleComplete: (id: string, currentStatus: boolean) => void
+    onDelete: (id: string) => void
 }
 
-export const getColumns = ({ onToggleComplete }: ColumnsProps): ColumnDef<DeadlineData>[] => [
+export const getColumns = ({ onToggleComplete, onDelete }: ColumnsProps): ColumnDef<DeadlineData>[] => [
     {
         accessorKey: 'status',
         header: '',
@@ -84,11 +85,16 @@ export const getColumns = ({ onToggleComplete }: ColumnsProps): ColumnDef<Deadli
     {
         id: 'actions',
         cell: ({ row }) => (
-            <Button variant="ghost" size="sm" asChild>
-                <Link href={`/dashboard/cases/${row.original.matter.id}`}>
-                    <ArrowRight className="h-4 w-4" />
-                </Link>
-            </Button>
+            <div className="flex gap-1">
+                <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/dashboard/cases/${row.original.matter.id}`}>
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onDelete(row.original.id)}>
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+            </div>
         ),
     },
 ]

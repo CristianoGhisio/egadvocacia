@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
     try {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
         const tenantId = session.user.tenantId
         const now = new Date()
 
-        let whereClause: any = {
+        const whereClause: Prisma.DeadlineWhereInput = {
             tenantId,
         }
 

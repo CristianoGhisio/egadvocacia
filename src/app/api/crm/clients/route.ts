@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 // Validation schema
 const clientSchema = z.object({
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
         const search = searchParams.get('search')
         const type = searchParams.get('type')
 
-        const where: any = {
+        const where: Prisma.ClientWhereInput = {
             tenantId: session.user.tenantId,
         }
 

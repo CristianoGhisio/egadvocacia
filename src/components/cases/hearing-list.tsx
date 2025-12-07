@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -40,15 +40,17 @@ interface Hearing {
     hearingDate: string
     type: string | null
     location: string | null
-    status: string
+    status: 'scheduled' | 'completed' | 'cancelled'
 }
+
+type HearingInput = z.input<typeof hearingSchema>
 
 export function HearingList({ caseId }: { caseId: string }) {
     const [hearings, setHearings] = useState<Hearing[]>([])
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({
+    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<HearingInput>({
         resolver: zodResolver(hearingSchema),
         defaultValues: {
             status: 'scheduled',
@@ -56,20 +58,20 @@ export function HearingList({ caseId }: { caseId: string }) {
         }
     })
 
-    const fetchHearings = async () => {
+    const fetchHearings = useCallback(async () => {
         try {
             const res = await fetch(`/api/cases/${caseId}/hearings`)
             if (res.ok) setHearings(await res.json())
         } catch (error) {
             console.error(error)
         }
-    }
+    }, [caseId])
 
     useEffect(() => {
         fetchHearings()
-    }, [caseId])
+    }, [fetchHearings])
 
-    const onSubmit = async (data: any) => {
+    const onSubmit = async (data: HearingInput) => {
         setIsLoading(true)
         try {
             const res = await fetch(`/api/cases/${caseId}/hearings`, {

@@ -83,7 +83,7 @@ export default function TransactionsPage() {
                 </CardContent>
             </Card>
 
-            <TransactionList transactions={transactions} />
+            <TransactionList transactions={transactions} onChanged={refresh} />
 
             <TransactionForm
                 open={isFormOpen}

@@ -11,6 +11,12 @@ interface MatterOption {
     clientName: string
 }
 
+interface CaseListItem {
+    id: string
+    title: string
+    client: { name: string }
+}
+
 export default function TimeTrackingPage() {
     const [entries, setEntries] = useState<TimeEntry[]>([])
     const [matters, setMatters] = useState<MatterOption[]>([])
@@ -36,8 +42,8 @@ export default function TimeTrackingPage() {
             // We'll use a specific lookup endpoint or the general cases endpoint
             const res = await fetch('/api/cases?status=open')
             if (res.ok) {
-                const data = await res.json()
-                setMatters(data.map((m: any) => ({
+                const data: CaseListItem[] = await res.json()
+                setMatters(data.map((m) => ({
                     id: m.id,
                     title: m.title,
                     clientName: m.client.name

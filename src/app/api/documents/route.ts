@@ -5,19 +5,25 @@ import { prisma } from '@/lib/prisma'
 import { join } from 'path'
 import { writeFile, mkdir } from 'fs/promises'
 import { v4 as uuidv4 } from 'uuid'
+import { can, canAsync } from '@/lib/rbac'
+import type { Prisma } from '@prisma/client'
 
 // GET /api/documents
 export async function GET(request: NextRequest) {
-    try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const tenantId = session.user.tenantId
+    const allowed = can(session.user, 'documents.view') || await canAsync(session.user, tenantId, 'documents.view')
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
         const { searchParams } = new URL(request.url)
         const matterId = searchParams.get('matterId')
         const clientId = searchParams.get('clientId')
 
-        const where: any = {
-            tenantId: session.user.tenantId,
+        const where: Prisma.DocumentWhereInput = {
+            tenantId,
         }
 
         if (matterId) where.matterId = matterId
@@ -53,9 +59,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/documents
 export async function POST(request: NextRequest) {
-    try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const tenantId = session.user.tenantId
+    const allowed = can(session.user, 'documents.manage') || await canAsync(session.user, tenantId, 'documents.manage')
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
         const formData = await request.formData()
         const file = formData.get('file') as File | null
@@ -96,10 +106,35 @@ export async function POST(request: NextRequest) {
                 fileSize: file.size,
                 storagePath: publicUrl, // Storing the public URL for easy access
                 type: 'Outros', // Default type
-                tenantId: session.user.tenantId,
+                tenantId,
                 matterId: matterId || null,
                 clientId: clientId || null,
                 uploadedById: session.user.id
+            }
+        })
+
+        // Create initial version entry
+        await prisma.documentVersion.create({
+            data: {
+                tenantId,
+                documentId: document.id,
+                version: 1,
+                storagePath: publicUrl,
+                fileSize: file.size,
+                uploadedById: session.user.id,
+                changesDescription: 'Versão inicial (upload)'
+            }
+        })
+
+        await prisma.auditLog.create({
+            data: {
+                tenantId,
+                userId: session.user.id,
+                action: 'create',
+                entityType: 'document',
+                entityId: document.id,
+                oldData: null,
+                newData: JSON.stringify({ name: file.name, path: publicUrl, matterId, clientId }),
             }
         })
 

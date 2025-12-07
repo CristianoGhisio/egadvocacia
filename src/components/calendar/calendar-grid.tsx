@@ -19,9 +19,10 @@ import { CalendarEvent } from '@/types/calendar'
 interface CalendarGridProps {
     currentDate: Date
     events: CalendarEvent[]
+    onDelete?: (event: CalendarEvent) => void
 }
 
-export function CalendarGrid({ currentDate, events }: CalendarGridProps) {
+export function CalendarGrid({ currentDate, events, onDelete }: CalendarGridProps) {
     const monthStart = startOfMonth(currentDate)
     const monthEnd = endOfMonth(monthStart)
     const startDate = startOfWeek(monthStart, { locale: ptBR })
@@ -69,7 +70,7 @@ export function CalendarGrid({ currentDate, events }: CalendarGridProps) {
 
                             <div className="flex flex-col gap-1 overflow-y-auto max-h-[150px] scrollbar-thin">
                                 {dayEvents.map(event => (
-                                    <EventCard key={event.id} event={event} />
+                                    <EventCard key={event.id} event={event} onDelete={onDelete} />
                                 ))}
                             </div>
                         </div>

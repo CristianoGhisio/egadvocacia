@@ -44,6 +44,9 @@ export default function UsersSettingsPage() {
     const [users, setUsers] = useState<User[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isInviteOpen, setIsInviteOpen] = useState(false)
+    const [isEditOpen, setIsEditOpen] = useState(false)
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+    const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
     // Invite Form
     const [inviteEmail, setInviteEmail] = useState('')
@@ -87,6 +90,39 @@ export default function UsersSettingsPage() {
         } catch (error) {
             console.error(error)
         }
+    }
+
+    async function handleUpdate(e: React.FormEvent) {
+        e.preventDefault()
+        if (!selectedUser) return
+        try {
+            const res = await fetch(`/api/settings/users/${selectedUser.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: selectedUser.role, isActive: selectedUser.isActive })
+            })
+            if (res.ok) {
+                setIsEditOpen(false)
+                setSelectedUser(null)
+                fetchUsers()
+            } else {
+                alert('Erro ao atualizar usuário')
+            }
+        } catch {}
+    }
+
+    async function confirmDelete() {
+        if (!selectedUser) return
+        try {
+            const res = await fetch(`/api/settings/users/${selectedUser.id}`, { method: 'DELETE' })
+            if (res.ok) {
+                setIsDeleteOpen(false)
+                setSelectedUser(null)
+                fetchUsers()
+            } else {
+                alert('Erro ao excluir usuário')
+            }
+        } catch {}
     }
 
     return (
@@ -179,9 +215,14 @@ export default function UsersSettingsPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon">
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="icon" onClick={() => { setSelectedUser(user); setIsEditOpen(true) }} title="Editar">
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => { setSelectedUser(user); setIsDeleteOpen(true) }} title="Excluir">
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -196,6 +237,62 @@ export default function UsersSettingsPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Usuário</DialogTitle>
+                        <DialogDescription>Atualize as informações do usuário</DialogDescription>
+                    </DialogHeader>
+                    {selectedUser && (
+                        <form onSubmit={handleUpdate} className="space-y-4">
+                            <div className="grid gap-2">
+                                <Label>Função / Papel</Label>
+                                <Select value={selectedUser.role} onValueChange={(v) => setSelectedUser(prev => prev ? { ...prev, role: v } : prev)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="admin">Administrador</SelectItem>
+                                        <SelectItem value="lawyer">Advogado</SelectItem>
+                                        <SelectItem value="paralegal">Estagiário/Paralegal</SelectItem>
+                                        <SelectItem value="financial">Financeiro</SelectItem>
+                                        <SelectItem value="secretary">Secretária</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Status</Label>
+                                <Select value={selectedUser.isActive ? 'active' : 'inactive'} onValueChange={(v) => setSelectedUser(prev => prev ? { ...prev, isActive: v === 'active' } : prev)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Ativo</SelectItem>
+                                        <SelectItem value="inactive">Inativo</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit">Salvar</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Excluir Usuário</DialogTitle>
+                        <DialogDescription>Esta ação é definitiva e não poderá ser desfeita.</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
+                        <Button variant="destructive" onClick={confirmDelete}>Excluir</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -45,9 +45,10 @@ const caseFormSchema = z.object({
 })
 
 type CaseFormData = z.infer<typeof caseFormSchema>
+type CaseFormInput = z.input<typeof caseFormSchema>
 
 interface CaseFormProps {
-    initialData?: any
+    initialData?: Partial<CaseFormInput>
     caseId?: string
     onSuccess?: () => void
     onCancel?: () => void
@@ -55,7 +56,7 @@ interface CaseFormProps {
 
 export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormProps) {
     const [isLoading, setIsLoading] = useState(false)
-    const [clients, setClients] = useState<any[]>([])
+    const [clients, setClients] = useState<Array<{ id: string; name: string }>>([])
     const [isLoadingClients, setIsLoadingClients] = useState(false)
     const [openClientSelect, setOpenClientSelect] = useState(false)
 
@@ -65,11 +66,11 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
         setValue,
         watch,
         formState: { errors },
-    } = useForm({
+    } = useForm<CaseFormInput>({
         resolver: zodResolver(caseFormSchema),
         defaultValues: initialData || {
             status: 'open',
-            practiceArea: 'Cível', // Default
+            practiceArea: 'Cível',
         },
     })
 
@@ -94,7 +95,7 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
         fetchClients()
     }, [])
 
-    const onSubmit = async (data: CaseFormData) => {
+    const onSubmit = async (data: CaseFormInput) => {
         setIsLoading(true)
         try {
             const url = caseId
@@ -239,7 +240,7 @@ export function CaseForm({ initialData, caseId, onSuccess, onCancel }: CaseFormP
                         <Label htmlFor="status">Status</Label>
                         <Select
                             value={watch('status')}
-                            onValueChange={(val: any) => setValue('status', val)}
+                            onValueChange={(val) => setValue('status', val as 'open' | 'pending' | 'closed' | 'archived')}
                             disabled={isLoading}
                         >
                             <SelectTrigger>

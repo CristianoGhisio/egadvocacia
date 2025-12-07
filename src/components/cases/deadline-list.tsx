@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -42,20 +42,21 @@ export function DeadlineList({ caseId }: { caseId: string }) {
         resolver: zodResolver(deadlineSchema)
     })
 
-    const fetchDeadlines = async () => {
+    const fetchDeadlines = useCallback(async () => {
         try {
             const res = await fetch(`/api/cases/${caseId}/deadlines`)
             if (res.ok) setDeadlines(await res.json())
         } catch (error) {
             console.error(error)
         }
-    }
+    }, [caseId])
 
     useEffect(() => {
         fetchDeadlines()
-    }, [caseId])
+    }, [fetchDeadlines])
 
-    const onSubmit = async (data: any) => {
+    type DeadlineForm = z.infer<typeof deadlineSchema>
+    const onSubmit = async (data: DeadlineForm) => {
         setIsLoading(true)
         try {
             const res = await fetch(`/api/cases/${caseId}/deadlines`, {

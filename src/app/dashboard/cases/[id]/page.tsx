@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,9 @@ import { ptBR } from 'date-fns/locale'
 import { CaseForm } from '@/components/cases/case-form'
 import { DeadlineList } from '@/components/cases/deadline-list'
 import { HearingList } from '@/components/cases/hearing-list'
+import { TaskKanban } from '@/components/cases/task-kanban'
 import { DocumentList } from '@/components/documents/document-list'
+import { ActivityTimeline } from '@/components/cases/activity-timeline'
 import { DocumentUpload } from '@/components/documents/document-upload'
 import { Client } from '@/lib/types/database'
 
@@ -51,7 +53,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
     const [isLoading, setIsLoading] = useState(true)
     const [isEditOpen, setIsEditOpen] = useState(false)
 
-    const fetchMatter = async () => {
+    const fetchMatter = useCallback(async () => {
         setIsLoading(true)
         try {
             const response = await fetch(`/api/cases/${id}`)
@@ -68,11 +70,11 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [id, router])
 
     useEffect(() => {
         fetchMatter()
-    }, [id])
+    }, [fetchMatter])
 
     const handleEditSuccess = () => {
         setIsEditOpen(false)
@@ -164,6 +166,7 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         <TabsList>
                             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
                             <TabsTrigger value="activities">Atividades</TabsTrigger>
+                            <TabsTrigger value="tasks">Tarefas</TabsTrigger>
                             <TabsTrigger value="deadlines">Prazos</TabsTrigger>
                             <TabsTrigger value="hearings">Audiências</TabsTrigger>
                             <TabsTrigger value="documents">Documentos</TabsTrigger>
@@ -243,7 +246,15 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                         <TabsContent value="activities">
                             <Card>
                                 <CardContent className="pt-6">
-                                    <p className="text-muted-foreground text-center py-8">Timeline de atividades em breve...</p>
+                                    <ActivityTimeline caseId={matter.id} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="tasks">
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <TaskKanban caseId={matter.id} />
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -334,9 +345,15 @@ export default function CaseDetailPage({ params }: { params: Promise<{ id: strin
                     <CaseForm
                         caseId={matter.id}
                         initialData={{
-                            ...matter,
                             clientId: matter.client.id,
-                            responsibleLawyerId: matter.responsibleLawyer?.id,
+                            title: matter.title,
+                            processNumber: matter.processNumber || '',
+                            description: matter.description || '',
+                            practiceArea: matter.practiceArea,
+                            court: matter.court || '',
+                            district: matter.district || '',
+                            instance: matter.instance || '',
+                            status: (['open','pending','closed','archived'].includes(matter.status) ? matter.status : 'open') as 'open' | 'pending' | 'closed' | 'archived',
                         }}
                         onSuccess={handleEditSuccess}
                         onCancel={() => setIsEditOpen(false)}

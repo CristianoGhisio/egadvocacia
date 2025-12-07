@@ -16,9 +16,15 @@ export async function POST(request: Request) {
         if (!session?.user?.id || !session?.user?.tenantId) {
             return new NextResponse('Unauthorized', { status: 401 })
         }
+        const role = session.user.role
+        if (!['admin', 'partner'].includes(role)) {
+            return new NextResponse('Forbidden', { status: 403 })
+        }
 
         const json = await request.json()
-        const { email, role } = inviteSchema.parse(json)
+        const parsed = inviteSchema.parse(json)
+        const email = parsed.email
+        const newRole = parsed.role
         const tenantId = session.user.tenantId
 
         // Check if user already exists
@@ -36,7 +42,7 @@ export async function POST(request: Request) {
         const user = await prisma.user.create({
             data: {
                 email,
-                role,
+                role: newRole,
                 tenantId,
                 password: uuidv4(), // Placeholder password to satisfy schema
                 fullName: '' // Will be filled on first login

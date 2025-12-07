@@ -9,6 +9,10 @@ export async function GET(request: Request) {
         if (!session?.user?.id || !session?.user?.tenantId) {
             return new NextResponse('Unauthorized', { status: 401 })
         }
+        const role = session.user.role
+        if (!['admin', 'partner'].includes(role)) {
+            return new NextResponse('Forbidden', { status: 403 })
+        }
 
         const users = await prisma.user.findMany({
             where: {
@@ -18,7 +22,8 @@ export async function GET(request: Request) {
                 id: true,
                 fullName: true,
                 email: true,
-                role: true
+                role: true,
+                isActive: true
             },
             orderBy: {
                 fullName: 'asc'

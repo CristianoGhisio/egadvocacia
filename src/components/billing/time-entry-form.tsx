@@ -116,7 +116,7 @@ export function TimeEntryForm({ onSuccess, matters }: TimeEntryFormProps) {
                                     <SelectContent>
                                         {matters?.map((matter) => (
                                             <SelectItem key={matter.id} value={matter.id}>
-                                                {matter.title}
+                                                {matter.title} — {matter.clientName}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

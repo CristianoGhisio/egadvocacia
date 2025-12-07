@@ -47,13 +47,13 @@ export async function DELETE(
 
         const { id } = await params
 
-        await prisma.deadline.delete({
-            where: {
-                id,
-                tenantId: session.user.tenantId,
-            }
+        const existing = await prisma.deadline.findFirst({
+            where: { id, tenantId: session.user.tenantId },
+            select: { id: true }
         })
+        if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+        await prisma.deadline.delete({ where: { id } })
         return NextResponse.json({ success: true })
     } catch (error) {
         return NextResponse.json({ error: 'Erro ao remover prazo' }, { status: 500 })

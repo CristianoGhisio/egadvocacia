@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -42,8 +42,10 @@ const clientFormSchema = z.object({
 
 type ClientFormData = z.infer<typeof clientFormSchema>
 
+type InitialData = Partial<ClientFormData> & { address?: string }
+
 interface ClientFormProps {
-    initialData?: any
+    initialData?: InitialData
     clientId?: string
     onSuccess?: () => void
     onCancel?: () => void
@@ -54,12 +56,12 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
     const [isLoadingCEP, setIsLoadingCEP] = useState(false)
 
     // Parse legacy JSON address if needed, or use new fields
-    const parseInitialData = () => {
+    const parseInitialData = (): Partial<ClientFormData> => {
         if (!initialData) {
-            return { type: 'pf', status: 'active' }
+            return { type: 'pf', status: 'active', leadStage: 'new' }
         }
 
-        let parsedData = { ...initialData }
+        let parsedData: Partial<ClientFormData> = { ...initialData }
 
         // Handle potentially parsing old address JSON if we were migrating, 
         // but since we updated schema, we expect new fields mostly. 
@@ -90,10 +92,15 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
         if (initialData.state) parsedData.state = initialData.state
         if (initialData.zipCode) parsedData.zipCode = initialData.zipCode
 
+        const safeType = parsedData.type === 'pf' || parsedData.type === 'pj' ? parsedData.type : 'pf'
+        const safeStatus = ['lead', 'active', 'inactive', 'archived'].includes(String(parsedData.status || ''))
+            ? (parsedData.status as 'lead' | 'active' | 'inactive' | 'archived')
+            : 'active'
+
         return {
             ...parsedData,
-            ...parsedData,
-            status: parsedData.status || 'active',
+            type: safeType,
+            status: safeStatus,
             leadStage: parsedData.leadStage || 'new',
         }
     }
@@ -113,7 +120,7 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
     const zipCode = watch('zipCode')
 
     // Buscar endereço pelo CEP
-    const fetchAddress = async (cep: string) => {
+    const fetchAddress = useCallback(async (cep: string) => {
         const cleanCEP = cep.replace(/\D/g, '')
         if (cleanCEP.length !== 8) return
 
@@ -137,7 +144,7 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
         } finally {
             setIsLoadingCEP(false)
         }
-    }
+    }, [setValue])
 
     // Watch CEP changes
     useEffect(() => {
@@ -150,7 +157,7 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
         if (currentCep?.length === 8 && currentCep !== initialCep) {
             fetchAddress(currentCep)
         }
-    }, [zipCode, initialData])
+    }, [zipCode, initialData, fetchAddress])
 
     const onSubmit = async (data: ClientFormData) => {
         setIsLoading(true)
@@ -383,7 +390,7 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
                     <Label htmlFor="status">Status</Label>
                     <Select
                         value={watch('status')}
-                        onValueChange={(value) => setValue('status', value as any)}
+                        onValueChange={(value) => setValue('status', value as 'lead' | 'active' | 'inactive' | 'archived')}
                         disabled={isLoading}
                     >
                         <SelectTrigger>
@@ -404,7 +411,7 @@ export function ClientForm({ initialData, clientId, onSuccess, onCancel }: Clien
                         <Label htmlFor="leadStage">Estágio do Lead</Label>
                         <Select
                             value={watch('leadStage')}
-                            onValueChange={(value) => setValue('leadStage', value as any)}
+                            onValueChange={(value) => setValue('leadStage', value as 'new' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost')}
                             disabled={isLoading}
                         >
                             <SelectTrigger>

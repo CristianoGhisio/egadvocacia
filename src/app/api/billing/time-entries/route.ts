@@ -3,6 +3,7 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 
 const createTimeEntrySchema = z.object({
     description: z.string().min(1, "Descrição é obrigatória"),
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
         const tenantId = session.user.tenantId
         const userId = session.user.id
 
-        const whereClause: any = {
+        const whereClause: Prisma.TimeEntryWhereInput = {
             tenantId,
             userId // Only list own entries for now, or admin could see all
         }

@@ -19,7 +19,7 @@ export interface Tenant {
     cnpj: string | null
     email: string | null
     phone: string | null
-    settings: Record<string, any>
+    settings: Record<string, unknown>
     is_active: boolean
     created_at: string
     updated_at: string
@@ -41,7 +41,7 @@ export interface Role {
     tenant_id: string
     name: string
     description: string | null
-    permissions: Record<string, any>
+    permissions: Record<string, unknown>
     created_at: string
 }
 
@@ -52,8 +52,8 @@ export interface AuditLog {
     action: string
     entity_type: string
     entity_id: string | null
-    old_data: Record<string, any> | null
-    new_data: Record<string, any> | null
+    old_data: Record<string, unknown> | null
+    new_data: Record<string, unknown> | null
     ip_address: string | null
     user_agent: string | null
     created_at: string
@@ -68,12 +68,12 @@ export interface Client {
     cpf_cnpj: string | null
     email: string | null
     phone: string | null
-    address: Record<string, any> | null
+    address: Record<string, unknown> | null
     responsible_lawyer_id: string | null
     status: ClientStatus
     leadStage?: string
     tags: string[] | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
     updated_at: string
 }
@@ -98,7 +98,7 @@ export interface Interaction {
     type: InteractionType
     subject: string | null
     description: string | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
 }
 
@@ -119,7 +119,7 @@ export interface Matter {
     status: MatterStatus
     risk_score: number | null
     tags: string[] | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
     updated_at: string
 }
@@ -171,7 +171,7 @@ export interface Activity {
     user_id: string | null
     action: string
     description: string | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
 }
 
@@ -191,7 +191,7 @@ export interface Document {
     is_template: boolean
     tags: string[] | null
     uploaded_by_id: string | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
 }
 
@@ -207,6 +207,64 @@ export interface DocumentVersion {
     created_at: string
 }
 
+// View models aligned with Prisma includes (camelCase)
+export type ClientStatusCamel = 'lead' | 'active' | 'inactive' | 'archived'
+
+export interface ClientView {
+    id: string
+    type: 'pf' | 'pj'
+    name: string
+    cpfCnpj?: string | null
+    email?: string | null
+    phone?: string | null
+    street?: string | null
+    number?: string | null
+    complement?: string | null
+    neighborhood?: string | null
+    city?: string | null
+    state?: string | null
+    zipCode?: string | null
+    status: ClientStatusCamel | string
+    createdAt?: string
+    responsibleLawyer?: { fullName: string; email?: string } | null
+    contacts: Array<{ id: string; name: string; role?: string | null; email?: string | null; phone?: string | null }>
+    interactions: Array<{ id: string; subject?: string | null; description?: string | null; createdAt: string; user?: { fullName?: string } | null }>
+    matters: Array<{ id: string; title: string; processNumber?: string | null }>
+    _count: { matters: number; contacts: number; interactions: number }
+}
+
+export interface MatterView {
+    id: string
+    title: string
+    processNumber?: string | null
+    practiceArea: string
+    status: 'open' | 'pending' | 'closed' | 'archived'
+    updatedAt: string
+    client: { id: string; name: string }
+}
+
+export interface TransactionView {
+    id: string
+    type: 'revenue' | 'expense'
+    category: string
+    description: string
+    amount: number
+    date: string
+    status: 'paid' | 'pending'
+    invoice?: { invoiceNumber: string; client: { name: string } }
+}
+
+export interface InvoiceView {
+    id: string
+    invoiceNumber: string
+    issueDate: string
+    dueDate: string
+    totalAmount: number
+    status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+    client: { name: string }
+    _count?: { items: number }
+}
+
 export interface Template {
     id: string
     tenant_id: string
@@ -214,7 +272,7 @@ export interface Template {
     description: string | null
     category: string | null
     content: string
-    variables: any[] // Array of variable definitions
+    variables: unknown[] // Array of variable definitions
     created_by_id: string | null
     created_at: string
     updated_at: string
@@ -252,7 +310,7 @@ export interface Invoice {
     payment_method: string | null
     paid_at: string | null
     notes: string | null
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
     created_at: string
 }
 

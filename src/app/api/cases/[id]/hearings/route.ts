@@ -55,18 +55,31 @@ export async function POST(
 
         const attendeesJson = validatedData.attendees ? JSON.stringify(validatedData.attendees) : null
 
-        const hearing = await prisma.hearing.create({
-            data: {
-                hearingDate: validatedData.hearingDate,
-                type: validatedData.type || null,
-                location: validatedData.location || null,
-                notes: validatedData.notes || null,
-                attendees: attendeesJson,
-                status: validatedData.status,
+        const hearing = await prisma.$transaction(async (tx) => {
+            const h = await tx.hearing.create({
+                data: {
+                    hearingDate: validatedData.hearingDate,
+                    type: validatedData.type || null,
+                    location: validatedData.location || null,
+                    notes: validatedData.notes || null,
+                    attendees: attendeesJson,
+                    status: validatedData.status,
 
-                matterId,
-                tenantId: session.user.tenantId,
-            },
+                    matterId,
+                    tenantId: session.user.tenantId,
+                },
+            })
+            await tx.activity.create({
+                data: {
+                    tenantId: session.user.tenantId,
+                    matterId,
+                    userId: session.user.id,
+                    action: 'hearing_created',
+                    description: `Audiência agendada: ${h.type || 'Audiência'}`,
+                    metadata: JSON.stringify({ hearingId: h.id, hearingDate: h.hearingDate })
+                }
+            })
+            return h
         })
 
         return NextResponse.json(hearing, { status: 201 })

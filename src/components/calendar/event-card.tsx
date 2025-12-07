@@ -2,14 +2,16 @@
 
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Gavel, Clock } from 'lucide-react'
+import { Gavel, Clock, Trash2 } from 'lucide-react'
 import { CalendarEvent } from '@/types/calendar'
+import { Button } from '@/components/ui/button'
 
 interface EventCardProps {
     event: CalendarEvent
+    onDelete?: (event: CalendarEvent) => void
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onDelete }: EventCardProps) {
     const router = useRouter()
 
     const isDeadline = event.type === 'deadline'
@@ -47,6 +49,19 @@ export function EventCard({ event }: EventCardProps) {
             {event.location && (
                 <div className="text-[10px] text-muted-foreground truncate italic">
                     📍 {event.location}
+                </div>
+            )}
+
+            {onDelete && (
+                <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); onDelete(event) }}
+                        title="Excluir"
+                    >
+                        <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
                 </div>
             )}
         </div>

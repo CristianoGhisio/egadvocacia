@@ -13,6 +13,7 @@ export function CalendarView() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [events, setEvents] = useState<CalendarEvent[]>([])
     const [isLoading, setIsLoading] = useState(false)
+    const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null)
 
     const fetchEvents = async (date: Date) => {
         setIsLoading(true)
@@ -42,7 +43,25 @@ export function CalendarView() {
     const prevMonth = () => setCurrentDate(subMonths(currentDate, 1))
     const goToToday = () => setCurrentDate(new Date())
 
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        try {
+            const id = deleteTarget.id
+            const endpoint = deleteTarget.type === 'deadline'
+                ? `/api/crm/deadlines/${id}`
+                : `/api/cases/hearings/${id}`
+            const res = await fetch(endpoint, { method: 'DELETE' })
+            if (!res.ok) throw new Error()
+            setDeleteTarget(null)
+            await fetchEvents(currentDate)
+            toast.success('Evento excluído')
+        } catch (error) {
+            toast.error('Erro ao excluir evento')
+        }
+    }
+
     return (
+        <>
         <div className="flex flex-col h-full gap-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -68,7 +87,7 @@ export function CalendarView() {
             </div>
 
             <div className="flex-1 min-h-[600px]">
-                <CalendarGrid currentDate={currentDate} events={events} />
+                <CalendarGrid currentDate={currentDate} events={events} onDelete={setDeleteTarget} />
             </div>
 
             <div className="flex gap-4 text-sm text-muted-foreground mt-2">
@@ -82,5 +101,24 @@ export function CalendarView() {
                 </div>
             </div>
         </div>
+        {deleteTarget && (
+            <>
+                <div className="fixed inset-0 z-40 bg-black/50" />
+                <dialog
+                    open
+                    className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-md p-6 shadow-xl"
+                >
+                    <div className="space-y-3">
+                        <div className="text-lg font-semibold">Excluir Evento</div>
+                        <div className="text-sm text-muted-foreground">Esta ação é definitiva e não poderá ser desfeita.</div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button className="px-3 py-2 border rounded" onClick={() => setDeleteTarget(null)}>Cancelar</button>
+                            <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={handleDelete}>Excluir</button>
+                        </div>
+                    </div>
+                </dialog>
+            </>
+        )}
+        </>
     )
 }

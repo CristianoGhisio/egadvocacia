@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,23 +12,24 @@ export default function BillingPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [filterStatus, setFilterStatus] = useState<string>('all')
 
-    useEffect(() => {
-        async function fetchInvoices() {
-            try {
-                const params = new URLSearchParams()
-                if (filterStatus !== 'all') params.append('status', filterStatus)
+    const fetchInvoices = useCallback(async () => {
+        try {
+            const params = new URLSearchParams()
+            if (filterStatus !== 'all') params.append('status', filterStatus)
 
-                const res = await fetch(`/api/billing/invoices?${params.toString()}`)
-                const data = await res.json()
-                setInvoices(data)
-            } catch (error) {
-                console.error("Failed to fetch invoices", error)
-            } finally {
-                setIsLoading(false)
-            }
+            const res = await fetch(`/api/billing/invoices?${params.toString()}`)
+            const data = await res.json()
+            setInvoices(data)
+        } catch (error) {
+            console.error("Failed to fetch invoices", error)
+        } finally {
+            setIsLoading(false)
         }
-        fetchInvoices()
     }, [filterStatus])
+
+    useEffect(() => {
+        fetchInvoices()
+    }, [fetchInvoices])
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -56,7 +57,7 @@ export default function BillingPage() {
             {isLoading ? (
                 <div>Carregando...</div>
             ) : (
-                <InvoiceList invoices={invoices} />
+                <InvoiceList invoices={invoices} onChanged={fetchInvoices} />
             )}
         </div>
     )

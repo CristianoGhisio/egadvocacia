@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,39 +21,9 @@ import { DocumentList } from '@/components/documents/document-list'
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Loader2, FileText, Users, MessageSquare, Briefcase } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDocument, formatPhone, formatAddress } from '@/lib/utils'
+import type { ClientView } from '@/lib/types/database'
 
-interface Client {
-    id: string
-    type: 'pf' | 'pj'
-    name: string
-    cpfCnpj?: string
-    email?: string
-    phone?: string
-
-    // Address fields
-    street?: string
-    number?: string
-    complement?: string
-    neighborhood?: string
-    city?: string
-    state?: string
-    zipCode?: string
-
-    status: string
-    createdAt?: string
-    responsibleLawyer?: {
-        fullName: string
-        email: string
-    }
-    contacts: any[]
-    interactions: any[]
-    matters: any[]
-    _count: {
-        matters: number
-        contacts: number
-        interactions: number
-    }
-}
+type Client = ClientView
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
     // Unwrap async params
@@ -63,7 +33,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     const [isLoading, setIsLoading] = useState(true)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
-    const fetchClient = async () => {
+    const fetchClient = useCallback(async () => {
         setIsLoading(true)
         try {
             const response = await fetch(`/api/crm/clients/${id}`, {
@@ -83,11 +53,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [id, router])
 
     useEffect(() => {
         fetchClient()
-    }, [id])
+    }, [fetchClient])
 
     const handleUpdateSuccess = () => {
         setIsEditDialogOpen(false)
@@ -247,7 +217,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                 <p className="text-muted-foreground">Nenhum processo cadastrado</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {client.matters.map((matter: any) => (
+                                    {client.matters.map((matter) => (
                                         <div key={matter.id} className="border-b pb-3 last:border-0">
                                             <p className="font-medium">{matter.title}</p>
                                             <p className="text-sm text-muted-foreground">
@@ -275,7 +245,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                 <p className="text-muted-foreground">Nenhuma interação registrada</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {client.interactions.map((interaction: any) => (
+                                    {client.interactions.map((interaction) => (
                                         <div key={interaction.id} className="border-b pb-3 last:border-0">
                                             <p className="font-medium">{interaction.subject}</p>
                                             <p className="text-sm text-muted-foreground">{interaction.description}</p>
@@ -304,7 +274,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                                 <p className="text-muted-foreground">Nenhum contato cadastrado</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {client.contacts.map((contact: any) => (
+                                    {client.contacts.map((contact) => (
                                         <div key={contact.id} className="border-b pb-3 last:border-0">
                                             <p className="font-medium">{contact.name}</p>
                                             {contact.role && <p className="text-sm text-muted-foreground">{contact.role}</p>}
@@ -348,7 +318,22 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                     </DialogHeader>
                     <ClientForm
                         clientId={client.id}
-                        initialData={client}
+                        initialData={{
+                            type: client.type,
+                            name: client.name,
+                            cpfCnpj: client.cpfCnpj || undefined,
+                            email: client.email || '',
+                            phone: client.phone || undefined,
+                            street: client.street || undefined,
+                            number: client.number || undefined,
+                            complement: client.complement || undefined,
+                            neighborhood: client.neighborhood || undefined,
+                            city: client.city || undefined,
+                            state: client.state || undefined,
+                            zipCode: client.zipCode || undefined,
+                            status: (['lead','active','inactive','archived'].includes(client.status) ? client.status : 'active') as 'lead' | 'active' | 'inactive' | 'archived',
+                            leadStage: 'new'
+                        }}
                         onSuccess={handleUpdateSuccess}
                         onCancel={() => setIsEditDialogOpen(false)}
                     />

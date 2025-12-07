@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { addDays } from 'date-fns'
+import type { Prisma } from '@prisma/client'
 
 const createInvoiceSchema = z.object({
     clientId: z.string().min(1),
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
         const tenantId = session.user.tenantId
         const status = searchParams.get('status')
 
-        const whereClause: any = { tenantId }
+        const whereClause: Prisma.InvoiceWhereInput = { tenantId }
         if (status) whereClause.status = status
 
         const invoices = await prisma.invoice.findMany({
