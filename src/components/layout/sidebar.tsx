@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import {
     LayoutDashboard,
@@ -13,11 +12,9 @@ import {
     Clock,
     DollarSign,
     Settings,
-    LogOut,
     Target,
     Banknote,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -35,10 +32,6 @@ const navigation = [
 
 export function Sidebar() {
     const pathname = usePathname()
-
-    const handleLogout = async () => {
-        await signOut({ callbackUrl: '/auth/login' })
-    }
 
     return (
         <div className="flex h-full w-64 flex-col bg-slate-900 text-white">
@@ -69,17 +62,6 @@ export function Sidebar() {
                     )
                 })}
             </nav>
-
-            <div className="border-t border-slate-800 p-4">
-                <Button
-                    variant="ghost"
-                    className="w-full justify-start text-slate-300 hover:bg-slate-800 hover:text-white"
-                    onClick={handleLogout}
-                >
-                    <LogOut className="mr-2 h-5 w-5" />
-                    Sair
-                </Button>
-            </div>
         </div>
     )
 }

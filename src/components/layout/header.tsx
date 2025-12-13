@@ -1,16 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Search } from 'lucide-react'
+import { Bell, LogOut, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { signOut } from 'next-auth/react'
 
 type AlertItem = { id: string; type: 'deadline' | 'hearing'; title: string; date: string; daysUntil: number; matterTitle?: string | null; clientName?: string | null }
 
 export function Header() {
     const [alerts, setAlerts] = useState<AlertItem[]>([])
     const [open, setOpen] = useState(false)
+
+    const handleLogout = async () => {
+        await signOut({ callbackUrl: '/auth/login' })
+    }
 
     useEffect(() => {
         let mounted = true
@@ -80,6 +85,14 @@ export function Header() {
                         U
                     </AvatarFallback>
                 </Avatar>
+                <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
+                    onClick={handleLogout}
+                >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                </Button>
             </div>
         </header>
     )
