@@ -85,10 +85,6 @@ export default function LoginPage() {
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? 'Entrando...' : 'Entrar'}
                         </Button>
-                        <div className="text-sm text-center text-muted-foreground">
-                            <strong>Credenciais de teste:</strong><br />
-                            admin@egadvocacia.com / admin123
-                        </div>
                     </CardFooter>
                 </form>
             </Card>
