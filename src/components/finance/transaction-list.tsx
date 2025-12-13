@@ -16,7 +16,7 @@ import { ptBR } from "date-fns/locale"
 import { ArrowUpCircle, ArrowDownCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
 
-interface Transaction {
+export interface TransactionListItem {
     id: string
     type: 'revenue' | 'expense'
     category: string
@@ -33,7 +33,7 @@ interface Transaction {
 }
 
 interface TransactionListProps {
-    transactions: Transaction[]
+    transactions: TransactionListItem[]
     onChanged?: () => void
 }
 

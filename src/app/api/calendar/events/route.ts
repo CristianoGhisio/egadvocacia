@@ -1,13 +1,15 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
-            return new NextResponse('Unauthorized', { status: 401 })
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
+
+        if (!session.user.id || !session.user.tenantId) {
+            return jsonError(401, { error: 'Usuário inválido', code: 'invalid_session' })
         }
 
         const { searchParams } = new URL(request.url)
@@ -15,7 +17,7 @@ export async function GET(request: Request) {
         const endStr = searchParams.get('end')
 
         if (!startStr || !endStr) {
-            return new NextResponse('Missing date range parameters', { status: 400 })
+            return jsonError(400, { error: 'Parâmetros de data obrigatórios', code: 'missing_date_range' })
         }
 
         const startDate = new Date(startStr)
@@ -88,6 +90,6 @@ export async function GET(request: Request) {
 
     } catch (error) {
         console.error('Calendar Events Error:', error)
-        return new NextResponse('Internal Error', { status: 500 })
+        return jsonError(500, { error: 'Erro interno ao carregar eventos', code: 'internal_error' })
     }
 }

@@ -1,10 +1,10 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { can, canAsync } from '@/lib/rbac'
 import type { Prisma } from '@prisma/client'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 const createTransactionSchema = z.object({
     type: z.enum(['revenue', 'expense']),
@@ -17,10 +17,8 @@ const createTransactionSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id || !session?.user?.tenantId) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
+    const { session, errorResponse } = await requireSession()
+    if (!session) return errorResponse
 
     const tenantId = session.user.tenantId
     const allowed = can(session.user, 'finance.view') || await canAsync(session.user, tenantId, 'finance.view')
@@ -31,40 +29,58 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-        const where: Prisma.TransactionWhereInput = { tenantId }
+    const pageParam = searchParams.get('page')
+    const pageSizeParam = searchParams.get('pageSize')
 
-        if (type) where.type = type
-        if (startDate && endDate) {
-            where.date = {
-                gte: new Date(startDate),
-                lte: new Date(endDate)
-            }
-        }
+    const page = pageParam ? Math.max(1, Number(pageParam)) : 1
+    const pageSizeRaw = pageSizeParam ? Number(pageSizeParam) : 20
+    const pageSize = Math.min(Math.max(1, pageSizeRaw), 100)
 
-        const transactions = await prisma.transaction.findMany({
-            where,
-            orderBy: { date: 'desc' },
-            include: {
-                invoice: {
-                    select: { invoiceNumber: true, client: { select: { name: true } } }
-                }
-            }
-        })
+    const where: Prisma.TransactionWhereInput = { tenantId }
 
-        return NextResponse.json(transactions)
+    if (type) where.type = type
+    if (startDate && endDate) {
+      where.date = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      }
+    }
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        orderBy: { date: 'desc' },
+        include: {
+          invoice: {
+            select: { invoiceNumber: true, client: { select: { name: true } } },
+          },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.transaction.count({ where }),
+    ])
+
+    return NextResponse.json({
+      data: transactions,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        pageCount: Math.ceil(total / pageSize),
+      },
+    })
 
     } catch (error) {
         console.error('Transactions List Error:', error)
-        return new NextResponse('Internal Error', { status: 500 })
+        return jsonError(500, { error: 'Internal Error' })
     }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id || !session?.user?.tenantId) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
+    const { session, errorResponse } = await requireSession()
+    if (!session) return errorResponse
 
     const tenantId = session.user.tenantId
     const allowed = can(session.user, 'finance.manage') || await canAsync(session.user, tenantId, 'finance.manage')
@@ -101,9 +117,9 @@ export async function POST(request: Request) {
 
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return new NextResponse(JSON.stringify((error as z.ZodError).issues), { status: 400 })
+            return jsonError(400, { error: 'Dados inválidos', details: (error as z.ZodError).issues })
         }
         console.error('Transaction Create Error:', error)
-        return new NextResponse('Internal Error', { status: 500 })
+        return jsonError(500, { error: 'Internal Error' })
     }
 }

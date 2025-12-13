@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 // Validation schema
 const clientSchema = z.object({
@@ -31,14 +31,8 @@ const clientSchema = z.object({
 // GET /api/crm/clients - List all clients
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
@@ -49,6 +43,15 @@ export async function GET(request: NextRequest) {
         const where: Prisma.ClientWhereInput = {
             tenantId: session.user.tenantId,
         }
+
+        const pageParam = searchParams.get('page')
+        const pageSizeParam = searchParams.get('pageSize')
+
+        const isPaginated = !!(pageParam || pageSizeParam)
+
+        const page = pageParam ? Math.max(1, Number(pageParam)) : 1
+        const pageSizeRaw = pageSizeParam ? Number(pageSizeParam) : 20
+        const pageSize = Math.min(Math.max(1, pageSizeRaw), 100)
 
         if (status) {
             where.status = status
@@ -70,49 +73,79 @@ export async function GET(request: NextRequest) {
             ]
         }
 
-        const clients = await prisma.client.findMany({
-            where,
-            include: {
-                responsibleLawyer: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                        email: true,
+        if (!isPaginated) {
+            const clients = await prisma.client.findMany({
+                where,
+                include: {
+                    responsibleLawyer: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            matters: true,
+                            contacts: true,
+                        }
                     }
                 },
-                _count: {
-                    select: {
-                        matters: true,
-                        contacts: true,
-                    }
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        })
+                orderBy: {
+                    createdAt: 'desc'
+                },
+            })
 
-        return NextResponse.json(clients)
+            return NextResponse.json(clients)
+        }
+
+        const [clients, total] = await Promise.all([
+            prisma.client.findMany({
+                where,
+                include: {
+                    responsibleLawyer: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            matters: true,
+                            contacts: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.client.count({ where }),
+        ])
+
+        return NextResponse.json({
+            data: clients,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                pageCount: Math.ceil(total / pageSize),
+            },
+        })
     } catch (error) {
         console.error('Error fetching clients:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar clientes' },
-            { status: 500 }
-        )
+        return jsonError(500, { error: 'Erro ao buscar clientes' })
     }
 }
 
 // POST /api/crm/clients - Create new client
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const body = await request.json()
         const validatedData = clientSchema.parse(body)
@@ -134,10 +167,7 @@ export async function POST(request: NextRequest) {
                     'lead': 'Lead'
                 }
                 const statusPT = statusMap[existing.status] || existing.status
-                return NextResponse.json(
-                    { error: `Cliente já cadastrado com este CPF/CNPJ (Status: ${statusPT})` },
-                    { status: 400 }
-                )
+                return jsonError(400, { error: `Cliente já cadastrado com este CPF/CNPJ (Status: ${statusPT})` })
             }
         }
 
@@ -181,16 +211,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(client, { status: 201 })
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json(
-                { error: 'Dados inválidos', details: error.issues },
-                { status: 400 }
-            )
+            return jsonError(400, { error: 'Dados inválidos', details: error.issues })
         }
 
         console.error('Error creating client:', error)
-        return NextResponse.json(
-            { error: 'Erro ao criar cliente', message: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500 }
-        )
+        return jsonError(500, {
+            error: 'Erro ao criar cliente',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        })
     }
 }

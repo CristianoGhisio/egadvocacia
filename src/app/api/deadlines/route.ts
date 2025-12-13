@@ -1,14 +1,16 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { Prisma } from '@prisma/client'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
-            return new NextResponse('Unauthorized', { status: 401 })
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
+
+        if (!session.user.id || !session.user.tenantId) {
+            return jsonError(401, { error: 'Usuário inválido', code: 'invalid_session' })
         }
 
         const { searchParams } = new URL(request.url)
@@ -76,6 +78,6 @@ export async function GET(request: Request) {
 
     } catch (error) {
         console.error('Deadlines List Error:', error)
-        return new NextResponse('Internal Error', { status: 500 })
+        return jsonError(500, { error: 'Erro ao listar prazos', code: 'internal_error' })
     }
 }

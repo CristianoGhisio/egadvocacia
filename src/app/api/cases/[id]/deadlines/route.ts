@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 const deadlineSchema = z.object({
     title: z.string().min(3, 'Título obrigatório'),
@@ -17,8 +17,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const { id: matterId } = await params
 
@@ -34,7 +34,7 @@ export async function GET(
 
         return NextResponse.json(deadlines)
     } catch (error) {
-        return NextResponse.json({ error: 'Erro ao buscar prazos' }, { status: 500 })
+        return jsonError(500, { error: 'Erro ao buscar prazos' })
     }
 }
 
@@ -44,8 +44,8 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const { id: matterId } = await params
         const body = await request.json()
@@ -75,9 +75,9 @@ export async function POST(
         return NextResponse.json(deadline, { status: 201 })
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Dados inválidos', details: error.issues }, { status: 400 })
+            return jsonError(400, { error: 'Dados inválidos', details: error.issues })
         }
-        return NextResponse.json({ error: 'Erro ao criar prazo' }, { status: 500 })
+        return jsonError(500, { error: 'Erro ao criar prazo' })
     }
 }
 

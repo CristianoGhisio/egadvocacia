@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -109,6 +109,8 @@ model AuditLog {
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+  @@index([tenantId, entityType])
+  @@index([tenantId, userId])
 }
 
 // ============================================
@@ -150,6 +152,9 @@ model Client {
 
   @@unique([tenantId, cpfCnpj])
   @@map("clients")
+  @@index([tenantId, status])
+  @@index([tenantId, leadStage])
+  @@index([tenantId, name])
 }
 
 model Contact {
@@ -187,6 +192,8 @@ model Interaction {
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("interactions")
+  @@index([tenantId, clientId])
+  @@index([tenantId, userId])
 }
 
 // ============================================
@@ -226,6 +233,10 @@ model Matter {
   invoices          Invoice[]
 
   @@map("matters")
+  @@index([tenantId, status])
+  @@index([tenantId, clientId])
+  @@index([tenantId, responsibleLawyerId])
+  @@index([tenantId, createdAt])
 }
 
 model Task {
@@ -247,6 +258,9 @@ model Task {
   assignedTo User?   @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
 
   @@map("tasks")
+  @@index([tenantId, status])
+  @@index([tenantId, matterId])
+  @@index([tenantId, assignedToId])
 }
 
 model Deadline {
@@ -266,6 +280,9 @@ model Deadline {
   matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@map("deadlines")
+  @@index([tenantId, deadlineDate])
+  @@index([tenantId, isCompleted])
+  @@index([tenantId, matterId])
 }
 
 model Hearing {
@@ -285,6 +302,7 @@ model Hearing {
   matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
 
   @@map("hearings")
+  @@index([tenantId, matterId, hearingDate])
 }
 
 model Activity {
@@ -303,6 +321,7 @@ model Activity {
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("activities")
+  @@index([tenantId, matterId, createdAt])
 }
 
 // ============================================
@@ -335,6 +354,9 @@ model Document {
   versions   DocumentVersion[]
 
   @@map("documents")
+  @@index([tenantId, matterId])
+  @@index([tenantId, clientId])
+  @@index([tenantId, createdAt])
 }
 
 model DocumentVersion {
@@ -354,6 +376,7 @@ model DocumentVersion {
   uploadedBy User?    @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@map("document_versions")
+  @@index([tenantId, documentId, createdAt])
 }
 
 model Template {
@@ -373,6 +396,7 @@ model Template {
   createdBy User?  @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("templates")
+  @@index([tenantId, name])
 }
 
 // ============================================
@@ -402,6 +426,9 @@ model TimeEntry {
   invoice Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@map("time_entries")
+  @@index([tenantId, userId, date])
+  @@index([tenantId, clientId, matterId])
+  @@index([tenantId, invoiceId])
 }
 
 model Invoice {
@@ -433,6 +460,9 @@ model Invoice {
 
   @@unique([tenantId, invoiceNumber])
   @@map("invoices")
+  @@index([tenantId, clientId])
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
 }
 
 model InvoiceItem {
@@ -450,6 +480,7 @@ model InvoiceItem {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("invoice_items")
+  @@index([tenantId, invoiceId])
 }
 
 model Payment {
@@ -468,6 +499,8 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@map("payments")
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, paymentDate])
 }
 
 model Transaction {
@@ -489,4 +522,7 @@ model Transaction {
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
+  @@index([tenantId, date])
+  @@index([tenantId, type])
+  @@index([tenantId, status])
 }

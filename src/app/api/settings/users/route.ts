@@ -1,17 +1,16 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user?.id || !session?.user?.tenantId) {
-            return new NextResponse('Unauthorized', { status: 401 })
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
+
         const role = session.user.role
         if (!['admin', 'partner'].includes(role)) {
-            return new NextResponse('Forbidden', { status: 403 })
+            return jsonError(403, { error: 'Forbidden' })
         }
 
         const users = await prisma.user.findMany({
@@ -34,6 +33,6 @@ export async function GET(request: Request) {
 
     } catch (error) {
         console.error('Users List Error:', error)
-        return new NextResponse('Internal Error', { status: 500 })
+        return jsonError(500, { error: 'Internal Error' })
     }
 }

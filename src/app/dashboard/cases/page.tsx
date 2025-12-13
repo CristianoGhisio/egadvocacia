@@ -41,6 +41,7 @@ export default function CasesPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     const fetchCases = useCallback(async () => {
         setIsLoading(true)
@@ -176,29 +177,14 @@ export default function CasesPage() {
                                                     <Eye className="h-4 w-4" />
                                                 </Link>
                                             </Button>
-                                            <Button variant="ghost" size="sm" title="Excluir" onClick={() => {
-                                                const dlg = document.getElementById('case-delete-'+matter.id) as HTMLDialogElement | null
-                                                dlg?.showModal?.()
-                                            }}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                title="Excluir"
+                                                onClick={() => setDeleteId(matter.id)}
+                                            >
                                                 <Trash2 className="h-4 w-4 text-red-500" />
                                             </Button>
-                                            <dialog id={`case-delete-${matter.id}`} className="rounded-md p-6">
-                                                <div className="space-y-3">
-                                                    <div className="text-lg font-semibold">Excluir Processo</div>
-                                                    <div className="text-sm text-muted-foreground">Esta ação é definitiva e não poderá ser desfeita.</div>
-                                                    <div className="flex justify-end gap-2 mt-4">
-                                                        <button className="px-3 py-2 border rounded" onClick={(e) => (e.currentTarget.closest('dialog') as HTMLDialogElement).close()}>Cancelar</button>
-                                                        <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={async (e) => {
-                                                            try {
-                                                                const res = await fetch(`/api/cases/${matter.id}`, { method: 'DELETE' })
-                                                                if (!res.ok) return
-                                                                (e.currentTarget.closest('dialog') as HTMLDialogElement).close()
-                                                                fetchCases()
-                                                            } catch {}
-                                                        }}>Excluir</button>
-                                                    </div>
-                                                </div>
-                                            </dialog>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -222,6 +208,42 @@ export default function CasesPage() {
                     />
                 </DialogContent>
             </Dialog>
+
+            {deleteId && (
+                <>
+                    <div className="fixed inset-0 z-40 bg-black/50" />
+                    <dialog
+                        open
+                        className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-md p-6 shadow-xl"
+                    >
+                        <div className="space-y-3">
+                            <div className="text-lg font-semibold">Excluir Processo</div>
+                            <div className="text-sm text-muted-foreground">Esta ação é definitiva e não poderá ser desfeita.</div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    className="px-3 py-2 border rounded"
+                                    onClick={() => setDeleteId(null)}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-red-600 text-white rounded"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch(`/api/cases/${deleteId}`, { method: 'DELETE' })
+                                            if (!res.ok) return
+                                            setDeleteId(null)
+                                            fetchCases()
+                                        } catch {}
+                                    }}
+                                >
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </dialog>
+                </>
+            )}
         </div>
     )
 }

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 // Validation schema
 const caseSchema = z.object({
@@ -25,14 +25,8 @@ const caseSchema = z.object({
 // GET /api/cases - List all cases
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
@@ -43,6 +37,15 @@ export async function GET(request: NextRequest) {
         const where: Prisma.MatterWhereInput = {
             tenantId: session.user.tenantId,
         }
+
+        const pageParam = searchParams.get('page')
+        const pageSizeParam = searchParams.get('pageSize')
+
+        const isPaginated = !!(pageParam || pageSizeParam)
+
+        const page = pageParam ? Math.max(1, Number(pageParam)) : 1
+        const pageSizeRaw = pageSizeParam ? Number(pageSizeParam) : 20
+        const pageSize = Math.min(Math.max(1, pageSizeRaw), 100)
 
         if (status) {
             where.status = status
@@ -66,55 +69,91 @@ export async function GET(request: NextRequest) {
             ]
         }
 
-        const cases = await prisma.matter.findMany({
-            where,
-            include: {
-                client: {
-                    select: {
-                        id: true,
-                        name: true,
+        if (!isPaginated) {
+            const cases = await prisma.matter.findMany({
+                where,
+                include: {
+                    client: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    },
+                    responsibleLawyer: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            tasks: true,
+                            deadlines: true,
+                            hearings: true,
+                        }
                     }
                 },
-                responsibleLawyer: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                    }
+                orderBy: {
+                    createdAt: 'desc'
                 },
-                _count: {
-                    select: {
-                        tasks: true,
-                        deadlines: true,
-                        hearings: true,
-                    }
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        })
+            })
 
-        return NextResponse.json(cases)
+            return NextResponse.json(cases)
+        }
+
+        const [cases, total] = await Promise.all([
+            prisma.matter.findMany({
+                where,
+                include: {
+                    client: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    },
+                    responsibleLawyer: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            tasks: true,
+                            deadlines: true,
+                            hearings: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.matter.count({ where }),
+        ])
+
+        return NextResponse.json({
+            data: cases,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                pageCount: Math.ceil(total / pageSize),
+            },
+        })
     } catch (error) {
         console.error('Error fetching cases:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar processos' },
-            { status: 500 }
-        )
+        return jsonError(500, { error: 'Erro ao buscar processos' })
     }
 }
 
 // POST /api/cases - Create new case
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const body = await request.json()
         const validatedData = caseSchema.parse(body)
@@ -159,16 +198,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(matter, { status: 201 })
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json(
-                { error: 'Dados inválidos', details: error.issues },
-                { status: 400 }
-            )
+            return jsonError(400, { error: 'Dados inválidos', details: error.issues })
         }
 
         console.error('Error creating case:', error)
-        return NextResponse.json(
-            { error: 'Erro ao criar processo', message: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500 }
-        )
+        return jsonError(500, {
+            error: 'Erro ao criar processo',
+            details: error instanceof Error ? error.message : 'Unknown error',
+        })
     }
 }

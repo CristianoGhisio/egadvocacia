@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { join } from 'path'
 import { writeFile, mkdir } from 'fs/promises'
 import { v4 as uuidv4 } from 'uuid'
 import { can, canAsync } from '@/lib/rbac'
 import type { Prisma } from '@prisma/client'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 // GET /api/documents
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { session, errorResponse } = await requireSession()
+    if (!session) return errorResponse
 
     const tenantId = session.user.tenantId
     const allowed = can(session.user, 'documents.view') || await canAsync(session.user, tenantId, 'documents.view')
-    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!allowed) return jsonError(403, { error: 'Forbidden' })
 
         const { searchParams } = new URL(request.url)
         const matterId = searchParams.get('matterId')
@@ -53,19 +53,19 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(documents)
     } catch (error) {
-        return NextResponse.json({ error: 'Erro ao listar documentos' }, { status: 500 })
+        return jsonError(500, { error: 'Erro ao listar documentos' })
     }
 }
 
 // POST /api/documents
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { session, errorResponse } = await requireSession()
+    if (!session) return errorResponse
 
     const tenantId = session.user.tenantId
     const allowed = can(session.user, 'documents.manage') || await canAsync(session.user, tenantId, 'documents.manage')
-    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!allowed) return jsonError(403, { error: 'Forbidden' })
 
         const formData = await request.formData()
         const file = formData.get('file') as File | null
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         // const type = formData.get('type') as string || 'Outros' // If we want to categorize
 
         if (!file) {
-            return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
+            return jsonError(400, { error: 'Nenhum arquivo enviado' })
         }
 
         const bytes = await file.arrayBuffer()
@@ -141,6 +141,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(document, { status: 201 })
     } catch (error) {
         console.error('Upload Error:', error)
-        return NextResponse.json({ error: 'Erro ao processar upload' }, { status: 500 })
+        return jsonError(500, { error: 'Erro ao processar upload' })
     }
 }

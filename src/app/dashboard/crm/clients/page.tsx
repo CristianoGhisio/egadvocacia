@@ -31,6 +31,7 @@ import { ClientForm } from '@/components/crm/client-form'
 import { formatDocument } from '@/lib/utils'
 import { Plus, Search, Eye, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { fetchJson, type PaginatedResponse } from '@/lib/api-client'
 
 interface Client {
     id: string
@@ -75,8 +76,11 @@ const statusColors = {
 
 export default function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([])
+    const [page, setPage] = useState(1)
+    const [pageCount, setPageCount] = useState(1)
     const [isLoading, setIsLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('')
@@ -98,21 +102,19 @@ export default function ClientsPage() {
                 params.append('search', searchTerm)
             }
 
-            const response = await fetch(`/api/crm/clients?${params.toString()}`)
+            params.append('page', String(page))
 
-            if (!response.ok) {
-                throw new Error('Erro ao carregar clientes')
-            }
-
-            const data = await response.json()
-            setClients(data)
+            const data = await fetchJson<PaginatedResponse<Client>>(`/api/crm/clients?${params.toString()}`)
+            setClients(data.data)
+            setPage(data.pagination.page)
+            setPageCount(data.pagination.pageCount)
         } catch (error) {
             console.error('Error fetching clients:', error)
             toast.error('Erro ao carregar clientes')
         } finally {
             setIsLoading(false)
         }
-    }, [statusFilter, typeFilter, searchTerm])
+    }, [statusFilter, typeFilter, searchTerm, page])
 
     useEffect(() => {
         fetchClients()
@@ -120,6 +122,7 @@ export default function ClientsPage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
+        setPage(1)
         fetchClients()
     }
 
@@ -243,31 +246,11 @@ export default function ClientsPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 title="Excluir cliente"
-                                                onClick={() => {
-                                                    const dlg = document.getElementById('client-delete-'+client.id) as HTMLDialogElement | null
-                                                    dlg?.showModal?.()
-                                                }}
+                                                onClick={() => setDeleteId(client.id)}
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-500" />
                                             </Button>
                                         </div>
-                                        <dialog id={`client-delete-${client.id}`} className="rounded-md p-6">
-                                            <div className="space-y-3">
-                                                <div className="text-lg font-semibold">Excluir Cliente</div>
-                                                <div className="text-sm text-muted-foreground">Esta ação não poderá ser desfeita.</div>
-                                                <div className="flex justify-end gap-2 mt-4">
-                                                    <button className="px-3 py-2 border rounded" onClick={(e) => (e.currentTarget.closest('dialog') as HTMLDialogElement).close()}>Cancelar</button>
-                                                    <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={async (e) => {
-                                                        try {
-                                                            const res = await fetch(`/api/crm/clients/${client.id}`, { method: 'DELETE' })
-                                                            if (!res.ok) return
-                                                            (e.currentTarget.closest('dialog') as HTMLDialogElement).close()
-                                                            fetchClients()
-                                                        } catch {}
-                                                    }}>Excluir</button>
-                                                </div>
-                                            </div>
-                                        </dialog>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -275,6 +258,30 @@ export default function ClientsPage() {
                     </Table>
                 )}
             </div>
+
+            {clients.length > 0 && (
+                <div className="flex items-center justify-end gap-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1 || isLoading}
+                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    >
+                        Anterior
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Página {page} de {pageCount}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page >= pageCount || isLoading}
+                        onClick={() => setPage((current) => (current < pageCount ? current + 1 : current))}
+                    >
+                        Próxima
+                    </Button>
+                </div>
+            )}
 
             {/* Create Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -291,6 +298,42 @@ export default function ClientsPage() {
                     />
                 </DialogContent>
             </Dialog>
+
+            {deleteId && (
+                <>
+                    <div className="fixed inset-0 z-40 bg-black/50" />
+                    <dialog
+                        open
+                        className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-md p-6 shadow-xl"
+                    >
+                        <div className="space-y-3">
+                            <div className="text-lg font-semibold">Excluir Cliente</div>
+                            <div className="text-sm text-muted-foreground">Esta ação não poderá ser desfeita.</div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    className="px-3 py-2 border rounded"
+                                    onClick={() => setDeleteId(null)}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-red-600 text-white rounded"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch(`/api/crm/clients/${deleteId}`, { method: 'DELETE' })
+                                            if (!res.ok) return
+                                            setDeleteId(null)
+                                            fetchClients()
+                                        } catch {}
+                                    }}
+                                >
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </dialog>
+                </>
+            )}
         </div>
     )
 }

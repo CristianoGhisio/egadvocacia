@@ -8,20 +8,22 @@ import { TransactionList } from '@/components/finance/transaction-list'
 import { TransactionForm } from '@/components/finance/transaction-form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { fetchJson, type PaginatedResponse } from '@/lib/api-client'
+import type { TransactionListItem } from '@/components/finance/transaction-list'
 
 export default function TransactionsPage() {
-    const [transactions, setTransactions] = useState([])
+    const [transactions, setTransactions] = useState<TransactionListItem[]>([])
     const [isFormOpen, setIsFormOpen] = useState(false)
 
     // Filters
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
 
-    // Trigger for reloading data
-    const [version, setVersion] = useState(0)
+    const [page, setPage] = useState(1)
+    const [pageCount, setPageCount] = useState(1)
 
     function refresh() {
-        setVersion(v => v + 1)
+        setPage(1)
     }
 
     useEffect(() => {
@@ -30,19 +32,19 @@ export default function TransactionsPage() {
                 const params = new URLSearchParams()
                 if (startDate) params.append('startDate', startDate)
                 if (endDate) params.append('endDate', endDate)
+                params.append('page', String(page))
 
-                const res = await fetch(`/api/finance/transactions?${params.toString()}`)
-                if (res.ok) {
-                    const data = await res.json()
-                    setTransactions(data)
-                }
+                const data = await fetchJson<PaginatedResponse<TransactionListItem>>(`/api/finance/transactions?${params.toString()}`)
+                setTransactions(data.data)
+                setPage(data.pagination.page)
+                setPageCount(data.pagination.pageCount)
             } catch (error) {
                 console.error(error)
             }
         }
 
         fetchTransactions()
-    }, [startDate, endDate, version])
+    }, [startDate, endDate, page])
 
     return (
         <div className="space-y-6">
@@ -84,6 +86,30 @@ export default function TransactionsPage() {
             </Card>
 
             <TransactionList transactions={transactions} onChanged={refresh} />
+
+            {transactions.length > 0 && (
+                <div className="flex items-center justify-end gap-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    >
+                        Anterior
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Página {page} de {pageCount}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page >= pageCount}
+                        onClick={() => setPage((current) => (current < pageCount ? current + 1 : current))}
+                    >
+                        Próxima
+                    </Button>
+                </div>
+            )}
 
             <TransactionForm
                 open={isFormOpen}

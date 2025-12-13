@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { can, canAsync } from '@/lib/rbac'
+import { requireSession } from '@/lib/api-auth'
+import { jsonError } from '@/lib/api-errors'
 
 const updateCaseSchema = z.object({
     clientId: z.string().uuid().optional(),
@@ -27,18 +27,12 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const tenantId = session.user.tenantId
         const allowed = can(session.user, 'cases.view') || await canAsync(session.user, tenantId, 'cases.view')
-        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!allowed) return jsonError(403, { error: 'Forbidden', code: 'forbidden' })
 
         // Unwrap params Promise (Next.js 16)
         const { id } = await params
@@ -86,19 +80,13 @@ export async function GET(
         })
 
         if (!matter) {
-            return NextResponse.json(
-                { error: 'Processo não encontrado' },
-                { status: 404 }
-            )
+            return jsonError(404, { error: 'Processo não encontrado' })
         }
 
         return NextResponse.json(matter)
     } catch (error) {
         console.error('Error fetching case:', error)
-        return NextResponse.json(
-            { error: 'Erro ao buscar processo' },
-            { status: 500 }
-        )
+        return jsonError(500, { error: 'Erro ao buscar processo' })
     }
 }
 
@@ -108,18 +96,12 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const tenantId = session.user.tenantId
         const allowed = can(session.user, 'cases.manage') || await canAsync(session.user, tenantId, 'cases.manage')
-        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!allowed) return jsonError(403, { error: 'Forbidden', code: 'forbidden' })
 
         const { id } = await params
         const body = await request.json()
@@ -134,10 +116,7 @@ export async function PATCH(
         })
 
         if (!existingMatter) {
-            return NextResponse.json(
-                { error: 'Processo não encontrado' },
-                { status: 404 }
-            )
+            return jsonError(404, { error: 'Processo não encontrado' })
         }
 
         // Build tags JSON
@@ -185,17 +164,11 @@ export async function PATCH(
         return NextResponse.json(updatedMatter)
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json(
-                { error: 'Dados inválidos', details: error.issues },
-                { status: 400 }
-            )
+            return jsonError(400, { error: 'Dados inválidos', details: error.issues })
         }
 
         console.error('Error updating case:', error)
-        return NextResponse.json(
-            { error: 'Erro ao atualizar processo' },
-            { status: 500 }
-        )
+        return jsonError(500, { error: 'Erro ao atualizar processo' })
     }
 }
 
@@ -205,18 +178,12 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Não autenticado' },
-                { status: 401 }
-            )
-        }
+        const { session, errorResponse } = await requireSession()
+        if (!session) return errorResponse
 
         const tenantId = session.user.tenantId
         const allowed = can(session.user, 'cases.manage') || await canAsync(session.user, tenantId, 'cases.manage')
-        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!allowed) return jsonError(403, { error: 'Forbidden', code: 'forbidden' })
 
         const { id } = await params
 
@@ -229,10 +196,7 @@ export async function DELETE(
         })
 
         if (!existingMatter) {
-            return NextResponse.json(
-                { error: 'Processo não encontrado' },
-                { status: 404 }
-            )
+            return jsonError(404, { error: 'Processo não encontrado' })
         }
 
         // Validar se pode deletar (ex: tem faturas pagas?)
@@ -262,9 +226,6 @@ export async function DELETE(
         })
     } catch (error) {
         console.error('Error deleting case:', error)
-        return NextResponse.json(
-            { error: 'Erro ao arquivar processo' },
-            { status: 500 }
-        )
+        return jsonError(500, { error: 'Erro ao arquivar processo' })
     }
 }
