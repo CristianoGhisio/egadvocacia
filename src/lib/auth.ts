@@ -16,26 +16,38 @@ export interface User {
  * Authenticate user with email and password
  */
 export async function authenticateUser(email: string, password: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
-        where: { email },
-    })
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+        })
 
-    if (!user || !user.isActive) {
+        if (!user) {
+            console.error('[AUTH] user_not_found', { email })
+            return null
+        }
+
+        if (!user.isActive) {
+            console.error('[AUTH] user_inactive', { email })
+            return null
+        }
+
+        const isPasswordValid = await compare(password, user.password)
+        if (!isPasswordValid) {
+            console.error('[AUTH] invalid_password', { email })
+            return null
+        }
+
+        return {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role as UserRole,
+            tenantId: user.tenantId,
+            isActive: user.isActive,
+        }
+    } catch (error) {
+        console.error('[AUTH] error_authenticate_user', { email, error })
         return null
-    }
-
-    const isPasswordValid = await compare(password, user.password)
-    if (!isPasswordValid) {
-        return null
-    }
-
-    return {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role as UserRole,
-        tenantId: user.tenantId,
-        isActive: user.isActive,
     }
 }
 

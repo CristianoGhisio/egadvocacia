@@ -23,7 +23,13 @@ async function main() {
     const adminPassword = await hash('admin123', 10)
     const admin = await prisma.user.upsert({
         where: { email: 'admin@egadvocacia.com' },
-        update: {},
+        update: {
+            tenantId: tenant.id,
+            fullName: 'Administrador',
+            password: adminPassword,
+            role: 'admin',
+            isActive: true,
+        },
         create: {
             tenantId: tenant.id,
             fullName: 'Administrador',
@@ -39,7 +45,13 @@ async function main() {
     const eduardaPassword = await hash('26071999', 10)
     const eduardaAdmin = await prisma.user.upsert({
         where: { email: 'eduarda@egadvocacia.com' },
-        update: {},
+        update: {
+            tenantId: tenant.id,
+            fullName: 'Eduarda',
+            password: eduardaPassword,
+            role: 'admin',
+            isActive: true,
+        },
         create: {
             tenantId: tenant.id,
             fullName: 'Eduarda',
