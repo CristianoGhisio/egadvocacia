@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,68 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// CORE SCHEMA - Authentication & Tenancy
-// ============================================
-
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  cnpj      String?  @unique
-  email     String?
-  phone     String?
-  settings  String   @default("{}") // JSON
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  users            User[]
-  roles            Role[]
+  id               String            @id @default(uuid())
+  name             String
+  cnpj             String?           @unique
+  email            String?
+  phone            String?
+  settings         String            @default("{}")
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  activities       Activity[]
+  auditLogs        AuditLog[]
   clients          Client[]
   contacts         Contact[]
-  interactions     Interaction[]
-  matters          Matter[]
-  tasks            Task[]
   deadlines        Deadline[]
-  hearings         Hearing[]
-  activities       Activity[]
-  documents        Document[]
   documentVersions DocumentVersion[]
+  documents        Document[]
+  hearings         Hearing[]
+  interactions     Interaction[]
+  invoiceItems     InvoiceItem[]
+  invoices         Invoice[]
+  matters          Matter[]
+  payments         Payment[]
+  roles            Role[]
+  tasks            Task[]
   templates        Template[]
   timeEntries      TimeEntry[]
-  invoices         Invoice[]
-  invoiceItems     InvoiceItem[]
-  payments         Payment[]
-  auditLogs        AuditLog[]
   transactions     Transaction[]
+  users            User[]
 
   @@map("tenants")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  tenantId  String
-  fullName  String
-  email     String   @unique
-  password  String // hashed
-  role      String // admin, partner, lawyer, intern, financial, support, client
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  tenant                   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  responsibleForClients    Client[]       @relation("ResponsibleLawyer")
-  responsibleForMatters    Matter[]       @relation("ResponsibleLawyer")
-  assignedTasks            Task[]         @relation("AssignedTo")
-  interactions             Interaction[]
-  activities               Activity[]
-  uploadedDocuments        Document[]     @relation("UploadedBy")
-  uploadedVersions         DocumentVersion[] @relation("UploadedBy")
-  createdTemplates         Template[]     @relation("CreatedBy")
-  timeEntries              TimeEntry[]
-  auditLogs                AuditLog[]
+  id                    String            @id @default(uuid())
+  tenantId              String
+  fullName              String
+  email                 String            @unique
+  password              String
+  role                  String
+  isActive              Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  activities            Activity[]
+  auditLogs             AuditLog[]
+  responsibleForClients Client[]          @relation("ResponsibleLawyer")
+  uploadedVersions      DocumentVersion[] @relation("UploadedBy")
+  uploadedDocuments     Document[]        @relation("UploadedBy")
+  interactions          Interaction[]
+  responsibleForMatters Matter[]          @relation("ResponsibleLawyer")
+  assignedTasks         Task[]            @relation("AssignedTo")
+  createdTemplates      Template[]        @relation("CreatedBy")
+  timeEntries           TimeEntry[]
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -81,11 +70,9 @@ model Role {
   tenantId    String
   name        String
   description String?
-  permissions String   @default("{}") // JSON
+  permissions String   @default("{}")
   createdAt   DateTime @default(now())
-
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, name])
   @@map("roles")
@@ -98,63 +85,55 @@ model AuditLog {
   action     String
   entityType String
   entityId   String?
-  oldData    String? // JSON
-  newData    String? // JSON
+  oldData    String?
+  newData    String?
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
 
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("audit_logs")
   @@index([tenantId, entityType])
   @@index([tenantId, userId])
+  @@map("audit_logs")
 }
 
-// ============================================
-// CRM SCHEMA
-// ============================================
-
 model Client {
-  id                   String   @id @default(uuid())
-  tenantId             String
-  type                 String // pf, pj
-  name                 String
-  cpfCnpj              String?
-  email                String?
-  phone                String?
-  street               String?
-  number               String?
-  complement           String?
-  neighborhood         String?
-  city                 String?
-  state                String?
-  zipCode              String?
-  responsibleLawyerId  String?
-  status               String   @default("active") // lead, active, inactive, archived
-  leadStage            String?  @default("new") // new, qualified, proposal, negotiation, won, lost
-  tags                 String? // JSON array
-  metadata             String   @default("{}") // JSON
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  // Relations
-  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  responsibleLawyer User?         @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id], onDelete: SetNull)
-  contacts          Contact[]
-  interactions      Interaction[]
-  matters           Matter[]
-  timeEntries       TimeEntry[]
-  invoices          Invoice[]
-  documents         Document[]
+  id                  String        @id @default(uuid())
+  tenantId            String
+  type                String
+  name                String
+  cpfCnpj             String?
+  email               String?
+  phone               String?
+  street              String?
+  number              String?
+  complement          String?
+  neighborhood        String?
+  city                String?
+  state               String?
+  zipCode             String?
+  responsibleLawyerId String?
+  status              String        @default("active")
+  leadStage           String?       @default("new")
+  tags                String?
+  metadata            String        @default("{}")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  responsibleLawyer   User?         @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id])
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts            Contact[]
+  documents           Document[]
+  interactions        Interaction[]
+  invoices            Invoice[]
+  matters             Matter[]
+  timeEntries         TimeEntry[]
 
   @@unique([tenantId, cpfCnpj])
-  @@map("clients")
   @@index([tenantId, status])
   @@index([tenantId, leadStage])
   @@index([tenantId, name])
+  @@map("clients")
 }
 
 model Contact {
@@ -167,10 +146,8 @@ model Contact {
   phone     String?
   isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("contacts")
 }
@@ -180,87 +157,77 @@ model Interaction {
   tenantId    String
   clientId    String
   userId      String?
-  type        String // call, email, meeting, note
+  type        String
   subject     String?
   description String?
-  metadata    String   @default("{}") // JSON
+  metadata    String   @default("{}")
   createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
 
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("interactions")
   @@index([tenantId, clientId])
   @@index([tenantId, userId])
+  @@map("interactions")
 }
 
-// ============================================
-// CASES SCHEMA
-// ============================================
-
 model Matter {
-  id                   String   @id @default(uuid())
-  tenantId             String
-  clientId             String
-  processNumber        String?
-  title                String
-  description          String?
-  court                String?
-  district             String?
-  department           String?
-  instance             String?
-  practiceArea         String
-  responsibleLawyerId  String?
-  status               String   @default("open") // open, pending, closed, archived
-  riskScore            Int?
-  tags                 String? // JSON array
-  metadata             String   @default("{}") // JSON
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String      @id @default(uuid())
+  tenantId            String
+  clientId            String
+  processNumber       String?
+  title               String
+  description         String?
+  court               String?
+  district            String?
+  department          String?
+  instance            String?
+  practiceArea        String
+  responsibleLawyerId String?
+  status              String      @default("open")
+  riskScore           Int?
+  tags                String?
+  metadata            String      @default("{}")
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  activities          Activity[]
+  deadlines           Deadline[]
+  documents           Document[]
+  hearings            Hearing[]
+  invoices            Invoice[]
+  client              Client      @relation(fields: [clientId], references: [id])
+  responsibleLawyer   User?       @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id])
+  tenant              Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tasks               Task[]
+  timeEntries         TimeEntry[]
 
-  // Relations
-  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client            Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  responsibleLawyer User?      @relation("ResponsibleLawyer", fields: [responsibleLawyerId], references: [id], onDelete: SetNull)
-  tasks             Task[]
-  deadlines         Deadline[]
-  hearings          Hearing[]
-  activities        Activity[]
-  documents         Document[]
-  timeEntries       TimeEntry[]
-  invoices          Invoice[]
-
-  @@map("matters")
   @@index([tenantId, status])
   @@index([tenantId, clientId])
   @@index([tenantId, responsibleLawyerId])
   @@index([tenantId, createdAt])
+  @@map("matters")
 }
 
 model Task {
-  id          String    @id @default(uuid())
-  tenantId    String
-  matterId    String?
+  id           String    @id @default(uuid())
+  tenantId     String
+  matterId     String?
   assignedToId String?
-  title       String
-  description String?
-  dueDate     DateTime?
-  priority    String    @default("medium") // low, medium, high, urgent
-  status      String    @default("pending") // pending, in_progress, completed, cancelled
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
+  title        String
+  description  String?
+  dueDate      DateTime?
+  priority     String    @default("medium")
+  status       String    @default("pending")
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  assignedTo   User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  matter       Matter?   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matter     Matter? @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  assignedTo User?   @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-
-  @@map("tasks")
   @@index([tenantId, status])
   @@index([tenantId, matterId])
   @@index([tenantId, assignedToId])
+  @@map("tasks")
 }
 
 model Deadline {
@@ -274,15 +241,13 @@ model Deadline {
   isCompleted     Boolean   @default(false)
   completedAt     DateTime?
   createdAt       DateTime  @default(now())
+  matter          Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
-
-  @@map("deadlines")
   @@index([tenantId, deadlineDate])
   @@index([tenantId, isCompleted])
   @@index([tenantId, matterId])
+  @@map("deadlines")
 }
 
 model Hearing {
@@ -292,17 +257,15 @@ model Hearing {
   hearingDate DateTime
   type        String?
   location    String?
-  attendees   String? // JSON array
+  attendees   String?
   notes       String?
-  status      String   @default("scheduled") // scheduled, completed, cancelled
+  status      String   @default("scheduled")
   createdAt   DateTime @default(now())
+  matter      Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
-
-  @@map("hearings")
   @@index([tenantId, matterId, hearingDate])
+  @@map("hearings")
 }
 
 model Activity {
@@ -312,24 +275,18 @@ model Activity {
   userId      String?
   action      String
   description String?
-  metadata    String   @default("{}") // JSON
+  metadata    String   @default("{}")
   createdAt   DateTime @default(now())
+  matter      Matter   @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
 
-  // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matter Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("activities")
   @@index([tenantId, matterId, createdAt])
+  @@map("activities")
 }
 
-// ============================================
-// DOCUMENTS SCHEMA
-// ============================================
-
 model Document {
-  id           String   @id @default(uuid())
+  id           String            @id @default(uuid())
   tenantId     String
   matterId     String?
   clientId     String?
@@ -339,24 +296,22 @@ model Document {
   storagePath  String
   fileSize     Int?
   mimeType     String?
-  version      Int      @default(1)
-  isTemplate   Boolean  @default(false)
-  tags         String? // JSON array
+  version      Int               @default(1)
+  isTemplate   Boolean           @default(false)
+  tags         String?
   uploadedById String?
-  metadata     String   @default("{}") // JSON
-  createdAt    DateTime @default(now())
+  metadata     String            @default("{}")
+  createdAt    DateTime          @default(now())
+  versions     DocumentVersion[]
+  client       Client?           @relation(fields: [clientId], references: [id])
+  matter       Matter?           @relation(fields: [matterId], references: [id])
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy   User?             @relation("UploadedBy", fields: [uploadedById], references: [id])
 
-  // Relations
-  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matter     Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  client     Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  uploadedBy User?             @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
-  versions   DocumentVersion[]
-
-  @@map("documents")
   @@index([tenantId, matterId])
   @@index([tenantId, clientId])
   @@index([tenantId, createdAt])
+  @@map("documents")
 }
 
 model DocumentVersion {
@@ -369,14 +324,12 @@ model DocumentVersion {
   uploadedById       String?
   changesDescription String?
   createdAt          DateTime @default(now())
+  document           Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy         User?    @relation("UploadedBy", fields: [uploadedById], references: [id])
 
-  // Relations
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  uploadedBy User?    @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
-
-  @@map("document_versions")
   @@index([tenantId, documentId, createdAt])
+  @@map("document_versions")
 }
 
 model Template {
@@ -386,53 +339,45 @@ model Template {
   description String?
   category    String?
   content     String
-  variables   String   @default("[]") // JSON array
+  variables   String   @default("[]")
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User?  @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-
-  @@map("templates")
   @@index([tenantId, name])
+  @@map("templates")
 }
 
-// ============================================
-// BILLING SCHEMA
-// ============================================
-
 model TimeEntry {
-  id         String    @id @default(uuid())
-  tenantId   String
-  userId     String
-  matterId   String?
-  clientId   String?
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  matterId    String?
+  clientId    String?
   description String
-  hours      Float
-  hourlyRate Float?
-  billable   Boolean   @default(true)
-  billed     Boolean   @default(false)
-  invoiceId  String?
-  date       DateTime
-  createdAt  DateTime  @default(now())
+  hours       Float
+  hourlyRate  Float?
+  billable    Boolean  @default(true)
+  billed      Boolean  @default(false)
+  invoiceId   String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+  client      Client?  @relation(fields: [clientId], references: [id])
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  matter      Matter?  @relation(fields: [matterId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
 
-  // Relations
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
-  matter  Matter? @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  invoice Invoice? @relation(fields: [invoiceId], references: [id])
-
-  @@map("time_entries")
   @@index([tenantId, userId, date])
   @@index([tenantId, clientId, matterId])
   @@index([tenantId, invoiceId])
+  @@map("time_entries")
 }
 
 model Invoice {
-  id            String   @id @default(uuid())
+  id            String        @id @default(uuid())
   tenantId      String
   clientId      String
   invoiceNumber String
@@ -440,29 +385,27 @@ model Invoice {
   issueDate     DateTime
   dueDate       DateTime
   subtotal      Float
-  taxAmount     Float    @default(0)
+  taxAmount     Float         @default(0)
   totalAmount   Float
-  status        String   @default("pending") // draft, pending, paid, overdue, cancelled
+  status        String        @default("pending")
   paymentMethod String?
   paidAt        DateTime?
   notes         String?
-  metadata      String   @default("{}") // JSON
-  createdAt     DateTime @default(now())
-
-  // Relations
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  matter       Matter?       @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  items        InvoiceItem[]
-  payments     Payment[]
-  timeEntries  TimeEntry[]
-  transactions Transaction[]
+  metadata      String        @default("{}")
+  createdAt     DateTime      @default(now())
+  items         InvoiceItem[]
+  client        Client        @relation(fields: [clientId], references: [id])
+  matter        Matter?       @relation(fields: [matterId], references: [id])
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  timeEntries   TimeEntry[]
+  transactions  Transaction[]
 
   @@unique([tenantId, invoiceNumber])
-  @@map("invoices")
   @@index([tenantId, clientId])
   @@index([tenantId, status])
   @@index([tenantId, dueDate])
+  @@map("invoices")
 }
 
 model InvoiceItem {
@@ -474,13 +417,11 @@ model InvoiceItem {
   unitPrice   Float
   totalPrice  Float
   createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@map("invoice_items")
   @@index([tenantId, invoiceId])
+  @@map("invoice_items")
 }
 
 model Payment {
@@ -493,36 +434,30 @@ model Payment {
   transactionId String?
   notes         String?
   createdAt     DateTime @default(now())
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Relations
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-
-  @@map("payments")
   @@index([tenantId, invoiceId])
   @@index([tenantId, paymentDate])
+  @@map("payments")
 }
 
 model Transaction {
-  id            String   @id @default(uuid())
-  tenantId      String
-  type          String   // "revenue" | "expense"
-  category      String   // e.g. "Honorários", "Aluguel", "Material de Escritório"
-  description   String
-  amount        Float
-  date          DateTime
-  status        String   @default("paid") // "paid", "pending"
-  
-  // Optional links
-  invoiceId     String?
-  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
-  
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid())
+  tenantId    String
+  type        String
+  category    String
+  description String
+  amount      Float
+  date        DateTime
+  status      String   @default("paid")
+  invoiceId   String?
+  createdAt   DateTime @default(now())
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@map("transactions")
   @@index([tenantId, date])
   @@index([tenantId, type])
   @@index([tenantId, status])
+  @@map("transactions")
 }
